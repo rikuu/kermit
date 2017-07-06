@@ -1,0 +1,10 @@
+*.txt
+*.paf
+*.cf
+*.gz
+
+*.o
+*.a
+
+kermit
+kermit-color

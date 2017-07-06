@@ -1,0 +1,3 @@
+[submodule "miniasm"]
+	path = miniasm
+	url = https://github.com/lh3/miniasm
