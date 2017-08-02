@@ -73,12 +73,12 @@ km_idx_t *km_build_idx(const char *fn, sdict_t *d, const uint32_t length, const 
 	}
 	paf_close(fp);
 
-	idx->targets = calloc(idx->d->n_seq, sizeof(km_target_t));
+	idx->targets = (km_target_t*) calloc(idx->d->n_seq, sizeof(km_target_t));
 	for (uint32_t i = 0; i < idx->d->n_seq; i++) {
 		if (idx->d->seq[i].len == 0) continue;
 		uint32_t n_bins = (idx->d->seq[i].len >> length) + 2;
 		idx->targets[i].n_bins = n_bins;
-		idx->targets[i].bins = calloc(n_bins, sizeof(km_hit_v));
+		idx->targets[i].bins = (km_hit_v*) calloc(n_bins, sizeof(km_hit_v));
 	}
 
 	// Add hits to bins

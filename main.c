@@ -9,7 +9,7 @@
 #include "miniasm.h"
 #include "color.h"
 
-#define MA_VERSION "0.2-r159-dirty"
+#define MA_VERSION "0.2-r168-dirty"
 #define KM_VERSION "0.1"
 
 int main(int argc, char *argv[])

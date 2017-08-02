@@ -34,7 +34,7 @@ static void print_multicolors(const sdict_t *d, const km_multicolor_t *c) {
 km_multicolor_t *km_align_markers(char **map_fns, uint16_t n_maps, km_idx_t *idx, size_t n_reads, uint16_t *n_bins)
 {
 	uint32_t n_markers=0;
-	km_multicolor_t *colors = calloc(n_reads, sizeof(km_multicolor_t));
+	km_multicolor_t *colors = (km_multicolor_t*) calloc(n_reads, sizeof(km_multicolor_t));
 	for (uint16_t i = 0; i < n_maps; i++) {
 		marker_file_t *fp = marker_open(map_fns[i]);
 		if (fp == 0) {
@@ -45,13 +45,15 @@ km_multicolor_t *km_align_markers(char **map_fns, uint16_t n_maps, km_idx_t *idx
 		marker_rec_t r;
 		while (marker_read(fp, &r) >= 0) {
 			n_markers++;
-			const uint16_t color = *n_bins = i << 8 | (r.bin + 1);
-			const km_hit_v h = km_pileup(idx, r.n, r.p);
+			const uint16_t color = i << 8 | (r.bin + 1);
+			km_hit_v h = km_pileup(idx, r.n, r.p);
 			for (size_t j = 0; j < h.n; j++) {
 				size_t id = h.a[j].qn;
 				if (id >= n_reads || (colors[id].n > 0 && colors[id].a[colors[id].n - 1] == color)) continue;
 				kv_push(uint16_t, colors[id], color);
 			}
+			free(h.a);
+			*n_bins = color + 1;
 		}
 		marker_close(fp);
 	}
@@ -90,7 +92,7 @@ int main(int argc, char *argv[])
 		paf_fn = argv[optind];
 
 		n_maps = argc - optind - 1;
-		map_fns = malloc(sizeof(char*) * n_maps);
+		map_fns = (char**) malloc(sizeof(char*) * n_maps);
 		memcpy(map_fns, argv + (optind + 1), sizeof(char*) * n_maps);
 	} else {
 		fprintf(stderr, "Usage: kermit-color [options] <in.paf> <markers> [<markers2>,..]\n");
@@ -111,26 +113,29 @@ int main(int argc, char *argv[])
 
 	// TODO: Support reference-only coloring
 	fprintf(stderr, "[M::%s] ===> Step 2: mapping markers to reads <===\n", __func__);
-	size_t n_reads = d->n_seq; uint16_t n_bins = 0;
-	km_multicolor_t *multicolors = km_align_markers(map_fns, n_maps, idx, n_reads, &n_bins);
-	km_idx_destroy(idx);
+	uint16_t n_colors = 0;
+	km_multicolor_t *multicolors = km_align_markers(map_fns, n_maps, idx, d->n_seq, &n_colors);
 
-	fprintf(stderr, "[M::%s] %zu reads mapped to %u bins\n", __func__, n_reads, n_bins);
+	km_idx_destroy(idx);
+	free(map_fns);
 
 	if (!no_colors) {
 		if (!no_fold) {
 			fprintf(stderr, "[M::%s] ===> Step 3: folding colors <===\n", __func__);
-			km_fold(multicolors, n_reads, n_bins, min_coverage);
+			km_fold(multicolors, d->n_seq, n_colors, min_coverage);
 		}
-		km_color_t *colors = km_filter_multi(multicolors, n_reads);
+		km_color_t *colors = km_filter_multi(multicolors, d->n_seq);
 		print_colors(d, colors);
 		free(colors);
 	} else {
 		print_multicolors(d, multicolors);
 	}
 
-	sd_destroy(d);
+	for (size_t i = 0; i < d->n_seq; i++)
+		free(multicolors[i].a);
 	free(multicolors);
+
+	sd_destroy(d);
 
 	//fprintf(stderr, "[M::%s] Version: %s\n", __func__, KM_VERSION);
 	fprintf(stderr, "[M::%s] CMD:", __func__);

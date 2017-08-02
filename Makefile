@@ -1,5 +1,5 @@
 CC=			gcc
-CFLAGS=		-g -Wall -O2 -Wc++-compat -Wextra
+CFLAGS=		-g -Wall -O2 -Wc++-compat -Wextra -pedantic
 CPPFLAGS=
 INCLUDES=	-I. -Iminiasm
 OBJS=		miniasm/sys.o miniasm/sdict.o miniasm/paf.o miniasm/asg.o miniasm/common.o miniasm/hit.o miniasm/asm.o cf.o color.o index.o marker.o

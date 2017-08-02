@@ -14,7 +14,7 @@ km_color_t *km_colors_read(const char *fn, sdict_t *d)
 	color_rec_t r;
 	size_t ones = 0, twos = 0, tot = 0;
 
-	km_color_t *colors = calloc(d->n_seq, sizeof(km_color_t));
+	km_color_t *colors = (km_color_t*) calloc(d->n_seq, sizeof(km_color_t));
 
 	fp = cf_open(fn);
 	while (color_read(fp, &r) >= 0) {
@@ -58,7 +58,7 @@ int km_cut_cross(asg_t *g, km_color_t *c) {
 // filter out reads with >2 colors
 km_color_t *km_filter_multi(km_multicolor_t *colors, size_t n_reads) {
 	size_t n_filt = 0, ones = 0, twos = 0;
-	km_color_t *filtered = calloc(n_reads, sizeof(km_color_t));
+	km_color_t *filtered = (km_color_t*) calloc(n_reads, sizeof(km_color_t));
 	for (size_t i = 0; i < n_reads; i++) {
 		if (colors[i].n == 1) filtered[i].c1 = colors[i].a[0], ones++;
 		else if (colors[i].n == 2)
@@ -73,27 +73,31 @@ km_color_t *km_filter_multi(km_multicolor_t *colors, size_t n_reads) {
 void km_fold(km_multicolor_t *colors, size_t n_reads, uint16_t n_bins, uint16_t min_coverage) {
 	// Count number of reads crossing each bin
 	size_t n_cross = 0;
-	uint16_t *crossing = calloc(n_bins, sizeof(uint16_t));
+	uint16_t *crossing = (uint16_t*) calloc(n_bins, sizeof(uint16_t));
 	for (size_t i = 0; i < n_reads; i++) {
 		if (colors[i].n < 3) continue;
 		n_cross++;
 		for (size_t j = 0; j < colors[i].n; j++) {
 			uint16_t color = colors[i].a[j];
+			assert(color < n_bins);
 			if (crossing[color] == 255) continue;
 			crossing[color]++;
 		}
 	}
 
 	fprintf(stderr, "[M::%s] %zu crossing reads\n", __func__, n_cross);
-	if (n_cross == 0) return;
+	if (n_cross == 0) {
+		free(crossing);
+		return;
+	}
 
 	// Find all stretches of crossed bins with high coverage
 	// We repurpose crossing here to quickly find the start and end of folds
 	size_t n_fold = 0;
 	for (uint16_t i = 0; i < n_bins; i++) {
 		if (crossing[i] >= min_coverage) {
-			uint16_t j = i+1;
-			while (crossing[j] >= min_coverage) {
+			uint16_t j = i;
+			while (j < n_bins && crossing[j] >= min_coverage) {
 				crossing[j] = 0;
 				j++;
 			}
@@ -102,7 +106,7 @@ void km_fold(km_multicolor_t *colors, size_t n_reads, uint16_t n_bins, uint16_t 
 				crossing[i] = i;
 				crossing[i+1] = j-1;
 			}
-			i = j + 1;
+			i = j;
 		} else {
 			crossing[i] = 0;
 		}
@@ -110,12 +114,14 @@ void km_fold(km_multicolor_t *colors, size_t n_reads, uint16_t n_bins, uint16_t 
 
 	for (size_t i = 0; i < n_reads; i++) {
 		for (size_t j = 0; j < colors[i].n; j++) {
-			uint16_t cross = colors[i].a[j];
-			if (crossing[cross] != 0) {
+			// This assumes all reads that use colors inside a fold are contained
+			// TODO: Check for reads being left or right of the fold and use appropriate colors
+			uint16_t c = colors[i].a[j];
+			if (crossing[c] != 0) {
 				colors[i].n = 2, colors[i].m = 2;
-				colors[i].a = realloc(colors[i].a, sizeof(uint16_t) * 2);
-				colors[i].a[0] = crossing[cross];
-				colors[i].a[1] = crossing[cross+1];
+				// colors[i].a = realloc(colors[i].a, sizeof(uint16_t) * 2);
+				colors[i].a[0] = crossing[c];
+				colors[i].a[1] = crossing[c+1];
 				break;
 			}
 		}
