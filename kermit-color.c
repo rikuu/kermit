@@ -50,7 +50,7 @@ km_multicolor_t *km_align_markers(char **map_fns, uint16_t n_maps, km_idx_t *idx
 	for (uint16_t i = 0; i < n_maps; i++) {
 		marker_file_t *fp = marker_open(map_fns[i]);
 		if (fp == 0) {
-			fprintf(stderr, "ERROR: Failed to open \"%s\"\n", map_fns[i]);
+			fprintf(stderr, "[E::%s] could not open map file %s\n", __func__, map_fns[i]);
 			exit(1);
 		}
 
@@ -61,7 +61,7 @@ km_multicolor_t *km_align_markers(char **map_fns, uint16_t n_maps, km_idx_t *idx
 			km_hit_v h = km_pileup(idx, r.n, r.p);
 			for (size_t j = 0; j < h.n; j++) {
 				int32_t id = h.a[j].qn;
-				if (id == -1 || id >= n_reads || (colors[id].n > 0 && colors[id].a[colors[id].n - 1] == color)) continue;
+				if (id == -1 || id >= (int32_t) n_reads || (colors[id].n > 0 && colors[id].a[colors[id].n - 1] == color)) continue;
 				kv_push(uint16_t, colors[id], color);
 			}
 			free(h.a);
@@ -83,7 +83,7 @@ km_multicolor_t *km_align_reference(km_idx_t *idx, size_t n_reads, uint16_t *n_c
 			const uint16_t color = i << 8 | (j + 1);
 			for (size_t k = 0; k < target->bins[j].n; k++) {
 				int32_t id = target->bins[j].a[k].qn;
-				if (id == -1 || id >= n_reads || (colors[id].n > 0 && colors[id].a[colors[id].n - 1] == color)) continue;
+				if (id == -1 || id >= (int32_t) n_reads || (colors[id].n > 0 && colors[id].a[colors[id].n - 1] == color)) continue;
 				kv_push(uint16_t, colors[id], color);
 			}
 		}

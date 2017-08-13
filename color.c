@@ -10,13 +10,15 @@
 
 km_color_t *km_colors_read(const char *fn, sdict_t *d)
 {
-	color_file_t *fp;
-	color_rec_t r;
-	size_t ones = 0, twos = 0, tot = 0;
+	color_file_t *fp = cf_open(fn);
+	if (fp == 0) {
+		fprintf(stderr, "[E::%s] could not open color file %s\n", __func__, fn);
+		exit(1);
+	}
 
 	km_color_t *colors = (km_color_t*) calloc(d->n_seq, sizeof(km_color_t));
-
-	fp = cf_open(fn);
+	color_rec_t r;
+	size_t ones = 0, twos = 0, tot = 0;
 	while (color_read(fp, &r) >= 0) {
 		++tot;
 		int32_t id = sd_get(d, r.qn);

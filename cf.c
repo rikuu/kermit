@@ -10,23 +10,18 @@ KSTREAM_INIT(gzFile, gzread, 0x10000)
 
 color_file_t *cf_open(const char *fn)
 {
-	kstream_t *ks;
-	gzFile fp;
-	color_file_t *pf;
-	fp = fn && strcmp(fn, "-")? gzopen(fn, "r") : gzdopen(fileno(stdin), "r");
+	gzFile fp = gzopen(fn, "r");
 	if (fp == 0) return 0;
-	ks = ks_init(fp);
-	pf = (color_file_t*)calloc(1, sizeof(color_file_t));
-	pf->fp = ks;
+	color_file_t *pf = (color_file_t*) calloc(1, sizeof(color_file_t));
+	pf->fp = ks_init(fp);
 	return pf;
 }
 
 int cf_close(color_file_t *pf)
 {
-	kstream_t *ks;
 	if (pf == 0) return 0;
 	free(pf->buf.s);
-	ks = (kstream_t*)pf->fp;
+	kstream_t *ks = (kstream_t*) pf->fp;
 	gzclose(ks->f);
 	ks_destroy(ks);
 	free(pf);
@@ -35,6 +30,7 @@ int cf_close(color_file_t *pf)
 
 static int color_parse(int l, char *s, color_rec_t *pr)
 {
+	pr->qn=0, pr->c1=0, pr->c2=0;
 	char *q, *r;
 	int i, t;
 	for (i = t = 0, q = s; i <= l; ++i) {
