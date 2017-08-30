@@ -23,7 +23,7 @@ km_hit_v km_pileup(km_idx_t *idx, const char *contig, const uint32_t pos) {
 	km_hit_v v = {0,0,0};
 
 	int32_t tid = sd_get(idx->d, contig);
-	uint32_t id = pos >> idx->length;
+	size_t id = pos / idx->length;
 	if (tid < 0 || id >= idx->targets[tid].n_bins) return v;
 	km_hit_v *bin = &idx->targets[tid].bins[id];
 	for (size_t i = 0; i < bin->n; i++) {
@@ -76,7 +76,7 @@ km_idx_t *km_build_idx(const char *fn, sdict_t *d, const uint32_t length, const 
 	idx->targets = (km_target_t*) calloc(idx->d->n_seq, sizeof(km_target_t));
 	for (uint32_t i = 0; i < idx->d->n_seq; i++) {
 		if (idx->d->seq[i].len == 0) continue;
-		uint32_t n_bins = (idx->d->seq[i].len >> length) + 2;
+		uint32_t n_bins = (idx->d->seq[i].len / length) + 2;
 		idx->targets[i].n_bins = n_bins;
 		idx->targets[i].bins = (km_hit_v*) calloc(n_bins, sizeof(km_hit_v));
 	}
@@ -93,10 +93,7 @@ km_idx_t *km_build_idx(const char *fn, sdict_t *d, const uint32_t length, const 
 
 		stored++;
 		km_hit_v *bins = idx->targets[h2.tn].bins;
-		size_t sid = h2.s >> length, eid = h2.e >> length;
-		// assert(h2.s <= h2.e);
-		// assert(sid <= eid);
-		// assert(sid < idx->targets[h2.tn].n_bins && eid < idx->targets[h2.tn].n_bins);
+		size_t sid = (size_t) floorf(h2.s / (float) length), eid = (size_t) ceilf(h2.e / (float) length);
 
 		km_hit_t *h;
 		kv_pushp(km_hit_t, bins[sid], &h);
@@ -104,7 +101,7 @@ km_idx_t *km_build_idx(const char *fn, sdict_t *d, const uint32_t length, const 
 		h->s = h2.s;
 		h->e = h2.e;
 
-		for (size_t i = sid+1; i < eid+1; i++) {
+		for (size_t i = sid+1; i < eid; i++) {
 			kv_push(km_hit_t, bins[i], *h);
 		}
 	}

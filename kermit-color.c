@@ -96,8 +96,8 @@ km_multicolor_t *km_align_reference(km_idx_t *idx, size_t n_reads, uint16_t *n_c
 int main(int argc, char *argv[])
 {
 	char *paf_fn = 0, **map_fns = 0;
-	uint16_t n_maps, min_coverage = 3, bin_length = 16;
-	uint32_t max_overhang = 250;
+	uint16_t n_maps = 0, min_coverage = 3;
+	uint32_t max_overhang = 250, bin_length = 10000;
 	int no_fold = 0, no_merge = 1, no_colors = 0, reference_only = 1, c;
 
 	while ((c = getopt(argc, argv, "c:o:l:pfmV")) >= 0) {
@@ -152,11 +152,13 @@ int main(int argc, char *argv[])
 
 	km_idx_destroy(idx);
 
+	if (!no_fold) {
+		fprintf(stderr, "[M::%s] ===> Step 3: folding colors <===\n", __func__);
+		km_fold(multicolors, d->n_seq, n_colors, min_coverage);
+		color_stats(multicolors, d->n_seq);
+	}
+
 	if (!no_colors) {
-		if (!no_fold) {
-			fprintf(stderr, "[M::%s] ===> Step 3: folding colors <===\n", __func__);
-			km_fold(multicolors, d->n_seq, n_colors, min_coverage);
-		}
 		km_color_t *colors = km_filter_multi(multicolors, d->n_seq);
 		print_colors(d, colors);
 		free(colors);
