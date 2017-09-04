@@ -47,8 +47,8 @@ int km_cut_cross(asg_t *g, km_color_t *c) {
 	uint32_t e, n_cross = 0;
 	for (e = 0; e < g->n_arc; ++e) {
 		uint32_t v = g->arc[e].ul>>33, u = g->arc[e].v>>1;
-		uint16_t cv1 = c[v].c1, cv2 = c[v].c2;
-		uint16_t cu1 = c[u].c1, cu2 = c[u].c2;
+		uint64_t cv1 = c[v].c1, cv2 = c[v].c2;
+		uint64_t cu1 = c[u].c1, cu2 = c[u].c2;
 		if (cv1 == 0 || cu1 == 0 || cv1 == cu1) continue;
 		if (cv2 != 0 && cv2 == cu1) continue;
 		if ((cv2 != 0 && cu2 != 0) && (cv1 == cu2 || cv2 == cu2)) continue;
@@ -77,17 +77,16 @@ km_color_t *km_filter_multi(km_multicolor_t *colors, size_t n_reads) {
 }
 
 // reduce colors by folding unnecessary colors
-void km_fold(km_multicolor_t *colors, size_t n_reads, uint16_t n_bins, uint16_t min_coverage) {
+void km_fold(km_multicolor_t *colors, size_t n_reads, uint64_t n_bins, uint16_t min_coverage) {
 	// Count number of reads crossing each bin
 	size_t n_cross = 0;
-	uint16_t *crossing = (uint16_t*) calloc(n_bins, sizeof(uint16_t));
+	uint64_t *crossing = (uint64_t*) calloc(n_bins, sizeof(uint64_t));
 	for (size_t i = 0; i < n_reads; i++) {
 		if (colors[i].n < 3) continue;
 		n_cross++;
 		for (size_t j = 0; j < colors[i].n; j++) {
-			uint16_t color = colors[i].a[j];
+			uint64_t color = colors[i].a[j];
 			assert(color < n_bins);
-			if (crossing[color] == 255) continue;
 			crossing[color]++;
 		}
 	}
@@ -99,9 +98,9 @@ void km_fold(km_multicolor_t *colors, size_t n_reads, uint16_t n_bins, uint16_t 
 
 	// Find all stretches of crossed colors with high coverage
 	size_t n_fold = 0;
-	for (uint16_t i = 0; i < n_bins; i++) {
+	for (uint64_t i = 0; i < n_bins; i++) {
 		if (crossing[i] >= min_coverage) {
-			uint16_t j = i;
+			uint64_t j = i;
 			while (j+1 < n_bins && crossing[j+1] >= min_coverage)
 				crossing[j+1] = i, j++;
 			n_fold += j - i, crossing[i] = j, i = j;
@@ -112,7 +111,7 @@ void km_fold(km_multicolor_t *colors, size_t n_reads, uint16_t n_bins, uint16_t 
 
 	for (size_t i = 0; i < n_reads; i++) {
 		for (size_t j = 0; j < colors[i].n; j++) {
-			uint16_t c = crossing[colors[i].a[j]], cc = crossing[c];
+			uint64_t c = crossing[colors[i].a[j]], cc = crossing[c];
 			if (c != 0) {
 				if (MAX(c, cc) < colors[i].a[colors[i].n-1]) {
 					colors[i].a[0] = MAX(c, cc);

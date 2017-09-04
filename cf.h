@@ -9,7 +9,7 @@ typedef paf_file_t color_file_t;
 
 typedef struct {
 	const char *qn;
-	uint16_t c1, c2;
+	uint64_t c1, c2;
 } color_rec_t;
 
 color_file_t *cf_open(const char *fn);

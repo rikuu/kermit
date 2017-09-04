@@ -9,7 +9,7 @@ marker_file_t *marker_open(const char *fn)
 {
 	gzFile fp = gzopen(fn, "r");
 	if (fp == 0) return 0;
-	marker_file_t *pf = calloc(1, sizeof(marker_file_t));
+	marker_file_t *pf = (marker_file_t *) calloc(1, sizeof(marker_file_t));
 	pf->fp = ks_init(fp);
 	return pf;
 }
@@ -18,7 +18,7 @@ int marker_close(marker_file_t *pf)
 {
 	if (pf == 0) return 0;
 	free(pf->buf.s);
-	kstream_t *ks = pf->fp;
+	kstream_t *ks = (kstream_t *) pf->fp;
 	gzclose(ks->f);
 	ks_destroy(ks);
 	free(pf);

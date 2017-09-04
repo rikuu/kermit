@@ -44,7 +44,7 @@ typedef struct {
 } km_hit2_t;
 
 km_idx_t *km_build_idx(const char *fn, sdict_t *d, const uint32_t length, const uint32_t max_overhang) {
-	km_idx_t *idx = calloc(1, sizeof(km_idx_t));
+	km_idx_t *idx = (km_idx_t *) calloc(1, sizeof(km_idx_t));
 	idx->length = length;
 	idx->d = sd_init();
 
