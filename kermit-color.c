@@ -43,7 +43,7 @@ static void color_stats(const km_multicolor_t *colors, const size_t n_reads)
 	fprintf(stderr, "[M::%s] %zu ones, %zu twos, %zu multis\n", __func__, ones, twos, multis);
 }
 
-km_multicolor_t *km_align_markers(char **map_fns, size_t n_maps, km_idx_t *idx, size_t n_reads, uint64_t *n_colors)
+km_multicolor_t *km_align_markers(char **map_fns, size_t n_maps, km_idx_t *idx, size_t n_reads)
 {
 	size_t n_markers = 0;
 	km_multicolor_t *colors = (km_multicolor_t*) calloc(n_reads, sizeof(km_multicolor_t));
@@ -57,7 +57,7 @@ km_multicolor_t *km_align_markers(char **map_fns, size_t n_maps, km_idx_t *idx, 
 		marker_rec_t r;
 		while (marker_read(fp, &r) >= 0) {
 			n_markers++;
-			const uint64_t color = i << 56 | (r.bin + 1);
+			const uint64_t color = i << 16 | (r.bin + 1);
 			km_hit_v h = km_pileup(idx, r.n, r.p);
 			for (size_t j = 0; j < h.n; j++) {
 				int32_t id = h.a[j].qn;
@@ -65,7 +65,6 @@ km_multicolor_t *km_align_markers(char **map_fns, size_t n_maps, km_idx_t *idx, 
 				kv_push(uint64_t, colors[id], color);
 			}
 			free(h.a);
-			*n_colors = color + 1;
 		}
 		marker_close(fp);
 	}
@@ -74,13 +73,13 @@ km_multicolor_t *km_align_markers(char **map_fns, size_t n_maps, km_idx_t *idx, 
 	return colors;
 }
 
-km_multicolor_t *km_align_reference(km_idx_t *idx, size_t n_reads, uint64_t *n_colors)
+km_multicolor_t *km_align_reference(km_idx_t *idx, size_t n_reads)
 {
 	km_multicolor_t *colors = (km_multicolor_t*) calloc(n_reads, sizeof(km_multicolor_t));
 	for (size_t i = 0; i < idx->d->n_seq; i++) {
 		km_target_t *target = &idx->targets[i];
 		for (size_t j = 0; j < target->n_bins; j++) {
-			const uint64_t color = i << 56 | (j + 1);
+			const uint64_t color = i << 16 | (j + 1);
 			for (size_t k = 0; k < target->bins[j].n; k++) {
 				int32_t id = target->bins[j].a[k].qn;
 				if (id == -1 || id >= (int32_t) n_reads || (colors[id].n > 0 && colors[id].a[colors[id].n - 1] == color)) continue;
@@ -88,7 +87,6 @@ km_multicolor_t *km_align_reference(km_idx_t *idx, size_t n_reads, uint64_t *n_c
 			}
 		}
 	}
-	*n_colors = ((idx->d->n_seq-1) << 56) | (idx->targets[idx->d->n_seq-1].n_bins + 1);
 	color_stats(colors, n_reads);
 	return colors;
 }
@@ -137,27 +135,34 @@ int main(int argc, char *argv[])
 	fprintf(stderr, "[M::%s] ===> Step 1: indexing read mappings <===\n", __func__);
 	km_idx_t *idx = km_build_idx(paf_fn, d, bin_length, max_overhang);
 
-	uint64_t n_colors = 0;
 	km_multicolor_t *multicolors = 0;
 	if (!reference_only) {
 		fprintf(stderr, "[M::%s] ===> Step 2: mapping markers to reads <===\n", __func__);
-		multicolors = km_align_markers(map_fns, n_maps, idx, d->n_seq, &n_colors);
+		multicolors = km_align_markers(map_fns, n_maps, idx, d->n_seq);
 		free(map_fns);
 	} else {
 		fprintf(stderr, "[M::%s] ===> Step 2: reversing index <===\n", __func__);
-		multicolors = km_align_reference(idx, d->n_seq, &n_colors);
+		multicolors = km_align_reference(idx, d->n_seq);
 	}
 
 	km_idx_destroy(idx);
 
-	if (!no_fold) {
-		fprintf(stderr, "[M::%s] ===> Step 3: folding colors <===\n", __func__);
-		km_fold(multicolors, d->n_seq, n_colors, min_coverage);
-		color_stats(multicolors, d->n_seq);
-	}
+	// if (!no_fold) {
+	// 	fprintf(stderr, "[M::%s] ===> Step 3: folding colors <===\n", __func__);
+	// 	km_fold(multicolors, d->n_seq, min_coverage);
+	// 	color_stats(multicolors, d->n_seq);
+	// }
+	//
+	// if (!no_colors) {
+	// 	km_color_t *colors = km_filter_multi(multicolors, d->n_seq);
+	// 	print_colors(d, colors);
+	// 	free(colors);
+	// } else {
+	// 	print_multicolors(d, multicolors);
+	// }
 
 	if (!no_colors) {
-		km_color_t *colors = km_filter_multi(multicolors, d->n_seq);
+		km_color_t *colors = km_intervalize(multicolors, d->n_seq);
 		print_colors(d, colors);
 		free(colors);
 	} else {

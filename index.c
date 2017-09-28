@@ -73,6 +73,7 @@ km_idx_t *km_build_idx(const char *fn, sdict_t *d, const uint32_t length, const 
 	}
 	paf_close(fp);
 
+	// Allocate bins
 	idx->targets = (km_target_t*) calloc(idx->d->n_seq, sizeof(km_target_t));
 	for (uint32_t i = 0; i < idx->d->n_seq; i++) {
 		if (idx->d->seq[i].len == 0) continue;
@@ -86,7 +87,7 @@ km_idx_t *km_build_idx(const char *fn, sdict_t *d, const uint32_t length, const 
 	for (size_t i = 0; i < v.n; i++) {
 		km_hit2_t h2 = v.a[i];
 		if (d->seq[h2.qn].len != h2.tl) {
-			// TODO: Squeeze dict; affects all qns?
+			// TODO: Squeeze dict; affects qns?
 			// d->seq[h2->qn].del = 1;
 			continue;
 		}

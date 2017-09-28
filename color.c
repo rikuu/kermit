@@ -62,6 +62,21 @@ int km_cut_cross(asg_t *g, km_color_t *c) {
 	return n_cross;
 }
 
+km_color_t *km_intervalize(km_multicolor_t *colors, size_t n_reads) {
+	km_color_t *intervals = (km_color_t*) calloc(n_reads, sizeof(km_color_t));
+	for (size_t i = 0; i < n_reads; i++) {
+		if (colors[i].n == 0) continue;
+		uint64_t min = colors[i].a[0], max = colors[i].a[0];
+		for (size_t j = 1; j < colors[i].n; j++) {
+			min = (colors[i].a[j] < min) ? colors[i].a[j] : min;
+			max = (colors[i].a[j] > max) ? colors[i].a[j] : max;
+		}
+		intervals[i].c1 = min;
+		intervals[i].c2 = max;
+	}
+	return intervals;
+}
+
 // filter out reads with >2 colors
 km_color_t *km_filter_multi(km_multicolor_t *colors, size_t n_reads) {
 	size_t n_filt = 0;
@@ -78,6 +93,7 @@ km_color_t *km_filter_multi(km_multicolor_t *colors, size_t n_reads) {
 
 // reduce colors by folding unnecessary colors
 void km_fold(km_multicolor_t *colors, size_t n_reads, uint64_t n_bins, uint16_t min_coverage) {
+	// TODO: Find folds per target sequence => drastically reduce memory usage
 	// Count number of reads crossing each bin
 	size_t n_cross = 0;
 	uint64_t *crossing = (uint64_t*) calloc(n_bins, sizeof(uint64_t));
