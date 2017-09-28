@@ -49,9 +49,7 @@ int km_cut_cross(asg_t *g, km_color_t *c) {
 		uint32_t v = g->arc[e].ul>>33, u = g->arc[e].v>>1;
 		uint64_t cv1 = c[v].c1, cv2 = c[v].c2;
 		uint64_t cu1 = c[u].c1, cu2 = c[u].c2;
-		if (cv1 == 0 || cu1 == 0 || cv1 == cu1) continue;
-		if (cv2 != 0 && cv2 == cu1) continue;
-		if ((cv2 != 0 && cu2 != 0) && (cv1 == cu2 || cv2 == cu2)) continue;
+		if (cv1 <= cu2 && cu1 <= cv2) continue;
 		g->arc[e].del = 1, ++n_cross;
 	}
 	fprintf(stderr, "[M::%s] removed %d color crossing arcs\n", __func__, n_cross);
