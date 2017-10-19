@@ -8,11 +8,6 @@
 #include "cf.h"
 #include "color.h"
 
-#define REMOVE(v, i) { v.n--; for (size_t x = i; x < v.n; x++) v.a[x] = v.a[x+1]; }
-#define IN(v, c) ({ int r=0; for (size_t x = 0; x < v.n; x++) r = r || (v.a[x] == c); r; })
-#define MIN(a, b) (a < b ? a : b)
-#define MAX(a, b) (a > b ? a : b)
-
 km_color_t *km_colors_read(const char *fn, sdict_t *d)
 {
 	color_file_t *fp = cf_open(fn);
@@ -73,73 +68,4 @@ km_color_t *km_intervalize(km_multicolor_t *colors, size_t n_reads) {
 		intervals[i].c2 = max;
 	}
 	return intervals;
-}
-
-// filter out reads with >2 colors
-km_color_t *km_filter_multi(km_multicolor_t *colors, size_t n_reads) {
-	size_t n_filt = 0;
-	km_color_t *filtered = (km_color_t*) calloc(n_reads, sizeof(km_color_t));
-	for (size_t i = 0; i < n_reads; i++) {
-		if (colors[i].n == 1) filtered[i].c1 = colors[i].a[0];
-		else if (colors[i].n == 2)
-			filtered[i].c1 = colors[i].a[0], filtered[i].c2 = colors[i].a[1];
-		else n_filt++;
-	}
-	fprintf(stderr, "[M::%s] filtered %zu reads\n", __func__, n_filt);
-	return filtered;
-}
-
-// reduce colors by folding unnecessary colors
-void km_fold(km_multicolor_t *colors, size_t n_reads, uint64_t n_bins, uint16_t min_coverage) {
-	// TODO: Find folds per target sequence => drastically reduce memory usage
-	// Count number of reads crossing each bin
-	size_t n_cross = 0;
-	uint64_t *crossing = (uint64_t*) calloc(n_bins, sizeof(uint64_t));
-	for (size_t i = 0; i < n_reads; i++) {
-		if (colors[i].n < 3) continue;
-		n_cross++;
-		for (size_t j = 0; j < colors[i].n; j++) {
-			uint64_t color = colors[i].a[j];
-			assert(color < n_bins);
-			crossing[color]++;
-		}
-	}
-
-	if (n_cross == 0) {
-		free(crossing);
-		return;
-	}
-
-	// Find all stretches of crossed colors with high coverage
-	size_t n_fold = 0;
-	for (uint64_t i = 0; i < n_bins; i++) {
-		if (crossing[i] >= min_coverage) {
-			uint64_t j = i;
-			while (j+1 < n_bins && crossing[j+1] >= min_coverage)
-				crossing[j+1] = i, j++;
-			n_fold += j - i, crossing[i] = j, i = j;
-		} else {
-			crossing[i] = 0;
-		}
-	}
-
-	for (size_t i = 0; i < n_reads; i++) {
-		for (size_t j = 0; j < colors[i].n; j++) {
-			uint64_t c = crossing[colors[i].a[j]], cc = crossing[c];
-			if (c != 0) {
-				if (MAX(c, cc) < colors[i].a[colors[i].n-1]) {
-					colors[i].a[0] = MAX(c, cc);
-					colors[i].a[1] = MAX(c, cc) + 1;
-				} else {
-					colors[i].a[0] = MIN(c, cc) - 1;
-					colors[i].a[1] = MAX(c, cc);
-				}
-				colors[i].n = 2;
-				break;
-			}
-		}
-	}
-
-	free(crossing);
-	fprintf(stderr, "[M::%s] folded %zu colors\n", __func__, n_fold);
 }

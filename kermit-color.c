@@ -20,18 +20,6 @@ static void print_colors(const sdict_t *d, const km_color_t *c)
 	}
 }
 
-static void print_multicolors(const sdict_t *d, const km_multicolor_t *c)
-{
-	for (size_t i = 0; i < d->n_seq; i++) {
-		if (c[i].n == 0) continue;
-		printf("%s", d->seq[i].name);
-		for (size_t j = 0; j < c[i].n; j++) {
-			printf("\t%lu", c[i].a[j]);
-		}
-		printf("\n");
-	}
-}
-
 static void color_stats(const km_multicolor_t *colors, const size_t n_reads)
 {
 	size_t ones=0, twos=0, multis=0;
@@ -94,16 +82,13 @@ km_multicolor_t *km_align_reference(km_idx_t *idx, size_t n_reads)
 int main(int argc, char *argv[])
 {
 	char *paf_fn = 0, **map_fns = 0;
-	uint16_t n_maps = 0, min_coverage = 3;
+	uint16_t n_maps = 0;
 	uint32_t max_overhang = 250, bin_length = 10000;
-	int no_fold = 0, no_colors = 0, reference_only = 1, c;
+	int reference_only = 1, c;
 
-	while ((c = getopt(argc, argv, "c:o:l:pfmV")) >= 0) {
-		if (c == 'c') min_coverage = atoi(optarg);
+	while ((c = getopt(argc, argv, "o:l:V")) >= 0) {
 		else if (c == 'o') max_overhang = atoi(optarg);
 		else if (c == 'l') bin_length = atoi(optarg);
-		else if (c == 'f') no_fold = 1;
-		else if (c == 'p') no_colors = 1;
 		else if (c == 'V') {
 			// printf("%s\n", KM_VERSION);
 			return 0;
@@ -122,9 +107,6 @@ int main(int argc, char *argv[])
 	} else {
 		fprintf(stderr, "Usage: kermit-color [options] <in.paf> <markers> [<markers2>,..]\n");
 		fprintf(stderr, "Options:\n");
-		fprintf(stderr, " -c INT      min fold coverage [%d]\n", min_coverage);
-		fprintf(stderr, " -f          disable color folding\n");
-		fprintf(stderr, " -p          output multicolored\n");
 		fprintf(stderr, " -V          print version number\n");
 		return 1;
 	}
@@ -147,27 +129,9 @@ int main(int argc, char *argv[])
 
 	km_idx_destroy(idx);
 
-	// if (!no_fold) {
-	// 	fprintf(stderr, "[M::%s] ===> Step 3: folding colors <===\n", __func__);
-	// 	km_fold(multicolors, d->n_seq, min_coverage);
-	// 	color_stats(multicolors, d->n_seq);
-	// }
-	//
-	// if (!no_colors) {
-	// 	km_color_t *colors = km_filter_multi(multicolors, d->n_seq);
-	// 	print_colors(d, colors);
-	// 	free(colors);
-	// } else {
-	// 	print_multicolors(d, multicolors);
-	// }
-
-	if (!no_colors) {
-		km_color_t *colors = km_intervalize(multicolors, d->n_seq);
-		print_colors(d, colors);
-		free(colors);
-	} else {
-		print_multicolors(d, multicolors);
-	}
+	km_color_t *colors = km_intervalize(multicolors, d->n_seq);
+	print_colors(d, colors);
+	free(colors);
 
 	for (size_t i = 0; i < d->n_seq; i++)
 		free(multicolors[i].a);
