@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 	int reference_only = 1, c;
 
 	while ((c = getopt(argc, argv, "o:l:V")) >= 0) {
-		else if (c == 'o') max_overhang = atoi(optarg);
+		if (c == 'o') max_overhang = atoi(optarg);
 		else if (c == 'l') bin_length = atoi(optarg);
 		else if (c == 'V') {
 			// printf("%s\n", KM_VERSION);
