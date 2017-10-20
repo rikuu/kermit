@@ -39,12 +39,10 @@ km_color_t *km_colors_read(const char *fn, sdict_t *d)
 
 // remove color crossing arcs
 int km_cut_cross(asg_t *g, km_color_t *c) {
-	uint32_t e, n_cross = 0;
-	for (e = 0; e < g->n_arc; ++e) {
+	uint32_t n_cross = 0;
+	for (uint32_t e = 0; e < g->n_arc; ++e) {
 		uint32_t v = g->arc[e].ul>>33, u = g->arc[e].v>>1;
-		uint64_t cv1 = c[v].c1, cv2 = c[v].c2;
-		uint64_t cu1 = c[u].c1, cu2 = c[u].c2;
-		if (cv1 <= cu2 && cu1 <= cv2) continue;
+		if (c[v].c1 <= c[u].c2 && c[u].c1 <= c[v].c2) continue;
 		g->arc[e].del = 1, ++n_cross;
 	}
 	fprintf(stderr, "[M::%s] removed %d color crossing arcs\n", __func__, n_cross);
