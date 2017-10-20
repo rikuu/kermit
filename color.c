@@ -18,22 +18,21 @@ km_color_t *km_colors_read(const char *fn, sdict_t *d)
 
 	km_color_t *colors = (km_color_t*) calloc(d->n_seq, sizeof(km_color_t));
 	color_rec_t r;
-	size_t ones = 0, twos = 0, tot = 0;
+	size_t ones = 0, twos = 0, multis = 0, tot = 0;
 	while (color_read(fp, &r) >= 0) {
 		++tot;
 		int32_t id = sd_get(d, r.qn);
-		if (id < 0) continue;
+		if (id < 0 || r.c1 == 0) continue;
 		colors[id].c1 = r.c1, colors[id].c2 = r.c2;
 
-		// TODO: count unique colors?
-		assert(r.c1 != 0);
-		if (r.c2 == 0) ones++;
-		else twos++;
+		if (r.c2 - r.c1 == 0) ones++;
+		else if (r.c2 - r.c1 == 1) twos++;
+		else multis++;
 
 		assert(strcmp(d->seq[id].name, r.qn) == 0);
 	}
 	cf_close(fp);
-	fprintf(stderr, "[M::%s] read %ld hits with %ld ones, %ld twos\n", __func__, tot, ones, twos);
+	fprintf(stderr, "[M::%s] read %ld hits with %ld ones, %ld twos, %ld multis\n", __func__, tot, ones, twos, multis);
 	return colors;
 }
 
