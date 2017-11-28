@@ -18,7 +18,7 @@ km_color_t *km_colors_read(const char *fn, sdict_t *d)
 
 	km_color_t *colors = (km_color_t*) calloc(d->n_seq, sizeof(km_color_t));
 	color_rec_t r;
-	size_t ones = 0, twos = 0, multis = 0, tot = 0;
+	size_t ones = 0, twos = 0, tot = 0;
 	while (color_read(fp, &r) >= 0) {
 		++tot;
 		int32_t id = sd_get(d, r.qn);
@@ -27,24 +27,22 @@ km_color_t *km_colors_read(const char *fn, sdict_t *d)
 
 		if (r.c2 - r.c1 == 0) ones++;
 		else if (r.c2 - r.c1 == 1) twos++;
-		else multis++;
-
-		assert(strcmp(d->seq[id].name, r.qn) == 0);
 	}
 	cf_close(fp);
-	fprintf(stderr, "[M::%s] read %ld hits with %ld ones, %ld twos, %ld multis\n", __func__, tot, ones, twos, multis);
+	fprintf(stderr, "[M::%s] read %ld hits with %ld ones, %ld twos, %ld multis, %ld uncolored\n",
+		__func__, tot, ones, twos, tot-ones+twos, d->n_seq-tot);
 	return colors;
 }
 
 // remove color crossing arcs
 int km_cut_cross(asg_t *g, km_color_t *c) {
-	uint32_t n_cross = 0;
+	size_t n_cross = 0;
 	for (uint32_t e = 0; e < g->n_arc; ++e) {
 		uint32_t v = g->arc[e].ul>>33, u = g->arc[e].v>>1;
 		if (c[v].c1 <= c[u].c2 && c[u].c1 <= c[v].c2) continue;
 		g->arc[e].del = 1, ++n_cross;
 	}
-	fprintf(stderr, "[M::%s] removed %d color crossing arcs\n", __func__, n_cross);
+	fprintf(stderr, "[M::%s] removed %ld color crossing arcs\n", __func__, n_cross);
 	if (n_cross) {
 		asg_cleanup(g);
 		asg_symm(g);
