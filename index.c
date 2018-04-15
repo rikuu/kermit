@@ -95,6 +95,9 @@ km_idx_t *km_build_idx(const char *fn, sdict_t *d, const uint32_t length, const 
 		stored++;
 		km_hit_v *bins = idx->targets[h2.tn].bins;
 		size_t sid = (size_t) floorf(h2.s / (float) length), eid = (size_t) ceilf(h2.e / (float) length);
+		assert(sid > 0 && sid < idx->targets[h2.tn].n_bins);
+		assert(eid > 0 && eid < idx->targets[h2.tn].n_bins);
+		assert(sid <= eid);
 
 		km_hit_t *h;
 		kv_pushp(km_hit_t, bins[sid], &h);
@@ -102,7 +105,7 @@ km_idx_t *km_build_idx(const char *fn, sdict_t *d, const uint32_t length, const 
 		h->s = h2.s;
 		h->e = h2.e;
 
-		for (size_t i = sid+1; i < eid; i++) {
+		for (size_t i = sid+1; i < eid+1; i++) {
 			kv_push(km_hit_t, bins[i], *h);
 		}
 	}

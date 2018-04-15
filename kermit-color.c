@@ -11,15 +11,6 @@
 #include "index.h"
 #include "marker.h"
 
-static void print_colors(const sdict_t *d, const km_color_t *c)
-{
-	for (size_t i = 0; i < d->n_seq; ++i) {
-		if (c[i].c1 == 0) continue;
-		else if (c[i].c2 == 0) printf("%s\t%lu\n", d->seq[i].name, c[i].c1);
-		else printf("%s\t%lu\t%lu\n", d->seq[i].name, c[i].c1, c[i].c2);
-	}
-}
-
 static void color_stats(const km_multicolor_t *colors, const size_t n_reads)
 {
 	size_t ones=0, twos=0, multis=0;
@@ -79,6 +70,7 @@ km_multicolor_t *km_align_reference(km_idx_t *idx, size_t n_reads)
 	return colors;
 }
 
+// TODO: None of this actually takes time to compute - merge all this to main.c
 int main(int argc, char *argv[])
 {
 	char *paf_fn = 0, **map_fns = 0;
@@ -130,7 +122,7 @@ int main(int argc, char *argv[])
 	km_idx_destroy(idx);
 
 	km_color_t *colors = km_intervalize(multicolors, d->n_seq);
-	print_colors(d, colors);
+	km_cf_print(d, colors);
 	free(colors);
 
 	for (size_t i = 0; i < d->n_seq; i++)

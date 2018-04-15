@@ -15,16 +15,17 @@
 int main(int argc, char *argv[])
 {
 	ma_opt_t opt;
-	int i, c, stage = 100, no_first = 0, no_second = 0, bi_dir = 1, o_set = 0, no_cont = 0, no_cross = 0;
+	int i, c, stage = 100, no_first = 0, no_second = 0, bi_dir = 1, o_set = 0, no_cont = 0, no_cross = 0, no_propagate = 0;
 	sdict_t *d, *excl = 0;
 	ma_sub_t *sub = 0;
 	ma_hit_t *hit;
 	size_t n_hits;
+	int max_depth = 10;
 	float cov = 40.0;
 	char *fn_reads = 0, *fn_colors = 0, *outfmt = "ug";
 
 	ma_opt_init(&opt);
-	while ((c = getopt(argc, argv, "n:m:s:c:S:i:d:g:o:h:I:r:f:e:p:C:12VBRbF:")) >= 0) {
+	while ((c = getopt(argc, argv, "n:m:s:c:S:i:d:g:o:h:I:r:f:e:p:C:12PVBRbF:")) >= 0) {
 		if (c == 'm') opt.min_match = atoi(optarg);
 		else if (c == 'i') opt.min_iden = atof(optarg);
 		else if (c == 's') opt.min_span = atoi(optarg);
@@ -40,12 +41,14 @@ int main(int argc, char *argv[])
 		else if (c == 'p') outfmt = optarg;
 		else if (c == '1') no_first = 1;
 		else if (c == '2') no_second = 1;
+		else if (c == 'P') no_propagate = 1;
 		else if (c == 'n') opt.n_rounds = atoi(optarg) - 1;
 		else if (c == 'B') bi_dir = 1;
 		else if (c == 'b') bi_dir = 0;
 		else if (c == 'R') no_cont = 1;
 		else if (c == 'F') opt.final_ovlp_drop_ratio = atof(optarg);
 		else if (c == 'C') fn_colors = optarg;
+		else if (c == 'D') max_depth = atoi(optarg);
 		else if (c == 'V') {
 			printf("%s\n", KM_VERSION);
 			return 0;
@@ -56,6 +59,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	if (o_set == 0) opt.min_ovlp = opt.min_span;
+	if (strcmp(outfmt, "cf") == 0) stage = (stage < 5) ? stage : 5;
 	if (argc == optind) {
 		fprintf(stderr, "Usage: kermit [options] <in.paf>\n");
 		fprintf(stderr, "Options:\n");
@@ -79,11 +83,13 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "                max and min overlap drop ratio [%.2g,%.2g]\n", opt.max_ovlp_drop_ratio, opt.min_ovlp_drop_ratio);
 		fprintf(stderr, "    -F FLOAT    aggressive overlap drop ratio in the end [%.2g]\n", opt.final_ovlp_drop_ratio);
 		fprintf(stderr, "    -C FILE     vertex colors []\n");
+		fprintf(stderr, "    -D INT      max propagation depth [%d]\n", max_depth);
 		fprintf(stderr, "  Miscellaneous:\n");
-		fprintf(stderr, "    -p STR      output information: sg or ug [%s]\n", outfmt);
+		fprintf(stderr, "    -p STR      output information: ug, sg, or cf [%s]\n", outfmt);
 		fprintf(stderr, "    -b          both directions of an arc are present in input\n");
 		fprintf(stderr, "    -1          skip 1-pass read selection\n");
 		fprintf(stderr, "    -2          skip 2-pass read selection\n");
+		fprintf(stderr, "    -P          skip propagation\n");
 		fprintf(stderr, "    -V          print version number\n");
 		return 1;
 	}
@@ -144,7 +150,16 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "[M::%s] ===> Step 4.1: reading graph coloring <===\n", __func__);
 		km_color_t *colors = km_colors_read(fn_colors, d);
 
-		fprintf(stderr, "[M::%s] ===> Step 4.2: removing color crossing arcs <===\n", __func__);
+		if (!no_propagate) {
+			fprintf(stderr, "[M::%s] ===> Step 4.2: propagating colors <===\n", __func__);
+			km_propagate(sg, colors, max_depth);
+		}
+
+		if (strcmp(outfmt, "cf") == 0) {
+			km_cf_print(d, colors);
+		}
+
+		fprintf(stderr, "[M::%s] ===> Step 4.3: removing color crossing arcs <===\n", __func__);
 		km_cut_cross(sg, colors);
 		free(colors);
 	}
@@ -190,10 +205,12 @@ int main(int argc, char *argv[])
 		if (fn_reads) ma_ug_seq(ug, d, sub, fn_reads);
 		ma_ug_print(ug, d, sub, stdout);
 		ma_ug_destroy(ug);
-	} else ma_sg_print(sg, d, sub, stdout);
+	} else if (strcmp(outfmt, "sg") == 0)
+		ma_sg_print(sg, d, sub, stdout);
 
 	asg_destroy(sg);
-	free(sub); free(hit);
+	free(sub);
+	free(hit);
 	sd_destroy(d);
 
 	fprintf(stderr, "[M::%s] Version: %s (miniasm %s)\n", __func__, KM_VERSION, MA_VERSION);

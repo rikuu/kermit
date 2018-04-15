@@ -13,9 +13,12 @@ typedef struct {
 // for representing multi-coloring for folding
 typedef kvec_t(uint64_t) km_multicolor_t;
 
+void km_cf_print(sdict_t *d, km_color_t *c);
 km_color_t *km_colors_read(const char *fn, sdict_t *d);
+
 int km_cut_cross(asg_t *g, km_color_t *c);
 
 km_color_t *km_intervalize(km_multicolor_t *colors, size_t n_reads);
+void km_propagate(asg_t *g, km_color_t *colors, int max_depth);
 
 #endif
