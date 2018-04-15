@@ -13,13 +13,14 @@
 
 static void color_stats(const km_multicolor_t *colors, const size_t n_reads)
 {
-	size_t ones=0, twos=0, multis=0;
+	size_t uncolored=0, ones=0, twos=0, multis=0;
 	for (size_t i = 0; i < n_reads; i++) {
-		if (colors[i].n == 1) ones++;
+		if (colors[i].n == 0) uncolored++;
+		else if (colors[i].n == 1) ones++;
 		else if (colors[i].n == 2) twos++;
-		else if (colors[i].n > 2) multis++;
+		else multis++;
 	}
-	fprintf(stderr, "[M::%s] %zu ones, %zu twos, %zu multis\n", __func__, ones, twos, multis);
+	fprintf(stderr, "[M::%s] %zu ones, %zu twos, %zu multis, %zu uncolored\n", __func__, ones, twos, multis, uncolored);
 }
 
 km_multicolor_t *km_align_markers(char **map_fns, size_t n_maps, km_idx_t *idx, size_t n_reads)

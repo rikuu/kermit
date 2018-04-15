@@ -95,8 +95,8 @@ km_idx_t *km_build_idx(const char *fn, sdict_t *d, const uint32_t length, const 
 		stored++;
 		km_hit_v *bins = idx->targets[h2.tn].bins;
 		size_t sid = (size_t) floorf(h2.s / (float) length), eid = (size_t) ceilf(h2.e / (float) length);
-		assert(sid > 0 && sid < idx->targets[h2.tn].n_bins);
-		assert(eid > 0 && eid < idx->targets[h2.tn].n_bins);
+		assert(sid < idx->targets[h2.tn].n_bins);
+		assert(eid < idx->targets[h2.tn].n_bins);
 		assert(sid <= eid);
 
 		km_hit_t *h;
