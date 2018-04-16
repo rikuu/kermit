@@ -10,17 +10,15 @@
 #include "color.h"
 
 #define km_color_key(a) ((a).c1)
+#define km_multicolor_key(a) ((a))
 KRADIX_SORT_INIT(color, km_color_t, km_color_key, 8)
-
-typedef kvec_t(km_color_t) km_color_v;
-
-#define colored(n) (n.c1 != 0 || n.c2 != 0)
+KRADIX_SORT_INIT(multicolor, uint64_t, km_multicolor_key, 8)
 
 void km_cf_print(sdict_t *d, km_color_t *c) {
 	for (size_t i = 0; i < d->n_seq; ++i) {
 		if (c[i].c1 == 0) continue;
-		else if (c[i].c2 == 0) printf("%s\t%lu\n", d->seq[i].name, c[i].c1);
-		else printf("%s\t%lu\t%lu\n", d->seq[i].name, c[i].c1, c[i].c2);
+		else if (c[i].c2 == 0) printf("%s\t%llu\n", d->seq[i].name, c[i].c1);
+		else printf("%s\t%llu\t%llu\n", d->seq[i].name, c[i].c1, c[i].c2);
 	}
 }
 
@@ -74,16 +72,13 @@ static inline int overlap(const km_color_t a, const km_color_t b) {
 }
 
 static km_color_t merge_colors(km_color_v colors) {
+	// TODO: Some heuristic for chimericity
 	radix_sort_color(colors.a, colors.a + colors.n);
-
 	km_color_t result = colors.a[0];
 	for (size_t i = 1; i < colors.n; i++) {
 		if (overlap(result, colors.a[i])) {
 			result.c1 = (colors.a[i].c1 < result.c1) ? colors.a[i].c1 : result.c1;
 			result.c1 = (colors.a[i].c2 > result.c2) ? colors.a[i].c2 : result.c2;
-		} else {
-			km_color_t null = {0, 0};
-			return null;
 		}
 	}
 	return result;
@@ -94,11 +89,12 @@ km_color_t *km_intervalize(km_multicolor_t *colors, size_t n_reads) {
 	km_color_t *intervals = (km_color_t*) calloc(n_reads, sizeof(km_color_t));
 	for (size_t i = 0; i < n_reads; i++) {
 		if (colors[i].n == 0) continue;
-		// TODO: Merge colors to interval
+		// TODO: Combine with color merging
+		radix_sort_multicolor(colors[i].a, colors[i].a + colors[i].n);
 		uint64_t min = colors[i].a[0], max = colors[i].a[0];
 		for (size_t j = 1; j < colors[i].n; j++) {
-			min = (colors[i].a[j] < min) ? colors[i].a[j] : min;
-			max = (colors[i].a[j] > max) ? colors[i].a[j] : max;
+			min = (colors[i].a[j] == min-1) ? colors[i].a[j] : min;
+			max = (colors[i].a[j] == max+1) ? colors[i].a[j] : max;
 		}
 		intervals[i].c1 = min;
 		intervals[i].c2 = max;
@@ -124,7 +120,7 @@ void km_propagate(asg_t *g, km_color_t *colors, int max_depth) {
 	asg_cleanup(g); // sort and index
 	uint32_t n_vtx = g->n_seq * 2;
 	size_t n_uncolored = 0, n_colored = 0;
-	int *visited = calloc(n_vtx, sizeof(int));
+	int *visited = (int*) calloc(n_vtx, sizeof(int));
 	km_color_v reachable = {0, 0, 0};
 	kvec_t(queue_t) queue = {0, 0, 0};
 	for (uint32_t v = 0; v < n_vtx; ++v) {
