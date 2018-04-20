@@ -53,7 +53,7 @@ int km_cut_cross(asg_t *g, km_color_t *c) {
 	size_t n_cross = 0;
 	for (uint32_t e = 0; e < g->n_arc; ++e) {
 		uint32_t v = g->arc[e].ul>>33, u = g->arc[e].v>>1;
-		// if (c[v].c1 == 0 || c[u].c1 == 0 || c[v].c1 == 0 || c[v].c2 == 0) continue;
+		if (c[v].c1 == 0 || c[u].c1 == 0 || c[v].c1 == 0 || c[v].c2 == 0) continue;
 		if (c[v].c2 >= c[u].c1 && c[u].c2 >= c[v].c1) continue;
 		g->arc[e].del = 1, ++n_cross;
 	}
