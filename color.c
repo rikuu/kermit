@@ -53,6 +53,7 @@ int km_cut_cross(asg_t *g, km_color_t *c) {
 	size_t n_cross = 0;
 	for (uint32_t e = 0; e < g->n_arc; ++e) {
 		uint32_t v = g->arc[e].ul>>33, u = g->arc[e].v>>1;
+		// if (c[v].c1 == 0 || c[u].c1 == 0 || c[v].c1 == 0 || c[v].c2 == 0) continue;
 		if (c[v].c2 >= c[u].c1 && c[u].c2 >= c[v].c1) continue;
 		g->arc[e].del = 1, ++n_cross;
 	}
@@ -78,8 +79,13 @@ static km_color_t merge_colors(km_color_v colors) {
 	for (size_t i = 1; i < colors.n; i++) {
 		if (overlap(result, colors.a[i])) {
 			result.c1 = (colors.a[i].c1 < result.c1) ? colors.a[i].c1 : result.c1;
-			result.c1 = (colors.a[i].c2 > result.c2) ? colors.a[i].c2 : result.c2;
+			result.c2 = (colors.a[i].c2 > result.c2) ? colors.a[i].c2 : result.c2;
 		}
+	}
+	if (result.c1 > result.c2) {
+		uint32_t tmp = result.c1;
+		result.c1 = result.c2;
+		result.c2 = tmp;
 	}
 	return result;
 }
@@ -96,6 +102,7 @@ km_color_t *km_intervalize(km_multicolor_t *colors, size_t n_reads) {
 			min = (colors[i].a[j] == min-1) ? colors[i].a[j] : min;
 			max = (colors[i].a[j] == max+1) ? colors[i].a[j] : max;
 		}
+		assert(min <= max);
 		intervals[i].c1 = min;
 		intervals[i].c2 = max;
 	}
@@ -117,10 +124,9 @@ typedef struct {
 
 // Propagate colors through the graph
 void km_propagate(asg_t *g, km_color_t *colors, int max_depth) {
-	asg_cleanup(g); // sort and index
-	uint32_t n_vtx = g->n_seq * 2;
+	uint32_t n_vtx = g->n_seq;
+	int8_t *visited = (int8_t*) calloc(n_vtx, sizeof(int8_t));
 	size_t n_uncolored = 0, n_colored = 0;
-	int *visited = (int*) calloc(n_vtx, sizeof(int));
 	km_color_v reachable = {0, 0, 0};
 	kvec_t(queue_t) queue = {0, 0, 0};
 	for (uint32_t v = 0; v < n_vtx; ++v) {
@@ -140,7 +146,7 @@ void km_propagate(asg_t *g, km_color_t *colors, int max_depth) {
 				uint32_t nv = asg_arc_n(g, s.node);
 				asg_arc_t *av = asg_arc_a(g, s.node);
 				for (uint32_t j = 0; j < nv; ++j) {
-					queue_t neighbor = {av[j].v^1, s.depth+1};
+					queue_t neighbor = {av[j].v>>1, s.depth+1};
 					if (!av[j].del && !visited[neighbor.node])
 						kv_push(queue_t, queue, neighbor);
 				}

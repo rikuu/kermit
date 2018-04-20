@@ -157,15 +157,16 @@ int main(int argc, char *argv[])
 
 		if (strcmp(outfmt, "cf") == 0) {
 			km_cf_print(d, colors);
+		} else {
+			fprintf(stderr, "[M::%s] ===> Step 4.3: removing color crossing arcs <===\n", __func__);
+			km_cut_cross(sg, colors);
 		}
 
-		fprintf(stderr, "[M::%s] ===> Step 4.3: removing color crossing arcs <===\n", __func__);
-		km_cut_cross(sg, colors);
 		free(colors);
 	}
 
-	fprintf(stderr, "[M::%s] ===> Step 5: 2-pass graph cleaning <===\n", __func__);
 	if (stage >= 6) {
+		fprintf(stderr, "[M::%s] ===> Step 5: 2-pass graph cleaning <===\n", __func__);
 		fprintf(stderr, "[M::%s] ===> Step 5.1: transitive reduction <===\n", __func__);
 		asg_arc_del_trans(sg, opt.gap_fuzz);
 	}
