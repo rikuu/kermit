@@ -62,7 +62,7 @@ km_idx_t *km_build_idx(const char *fn, sdict_t *d, const uint32_t length, const 
 		tot++;
 		uint32_t tl = r.te - r.ts;
 		int32_t id = sd_get(d, r.qn);
-		if (id > 0 && d->seq[id].len < tl) continue;
+		if (id >= 0 && d->seq[id].len > tl) continue;
 		km_hit2_t *h;
 		kv_pushp(km_hit2_t, v, &h);
 		h->qn = sd_put(d, r.qn, tl);
@@ -112,6 +112,6 @@ km_idx_t *km_build_idx(const char *fn, sdict_t *d, const uint32_t length, const 
 
 	// sd_squeeze(d);
 	free(v.a);
-	fprintf(stderr, "[M::%s] read %u hits; stored %d hits\n", __func__, tot, stored);
+	fprintf(stderr, "[M::%s] read %u hits; stored %u hits\n", __func__, tot, stored);
 	return idx;
 }
