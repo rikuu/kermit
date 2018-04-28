@@ -13,7 +13,7 @@ typedef struct {
 typedef kvec_t(km_color_t) km_color_v;
 typedef kvec_t(uint64_t) km_multicolor_t;
 
-#define colored(n) (n.c1 != 0 || n.c2 != 0)
+#define COLORED(n) (n.c1 != 0 || n.c2 != 0)
 
 void km_cf_print(sdict_t *d, km_color_t *c);
 km_color_t *km_colors_read(const char *fn, sdict_t *d);
