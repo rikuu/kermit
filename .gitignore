@@ -8,8 +8,7 @@
 *.o
 *.a
 
-miniasm/miniasm
-miniasm/minidot
-
 kermit
 kermit-color
+
+.vscode/**

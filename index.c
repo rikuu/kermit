@@ -1,9 +1,11 @@
 #include <math.h>
 #include <stdio.h>
 #include <assert.h>
+
 #include "kvec.h"
 #include "sdict.h"
 #include "paf.h"
+
 #include "index.h"
 
 void km_idx_destroy(km_idx_t *idx)
@@ -19,7 +21,8 @@ void km_idx_destroy(km_idx_t *idx)
 	free(idx);
 }
 
-km_hit_v km_pileup(km_idx_t *idx, const char *contig, const uint32_t pos) {
+km_hit_v km_pileup(km_idx_t *idx, const char *contig, const uint32_t pos)
+{
 	km_hit_v v = {0,0,0};
 
 	int32_t tid = sd_get(idx->d, contig);
@@ -34,7 +37,8 @@ km_hit_v km_pileup(km_idx_t *idx, const char *contig, const uint32_t pos) {
 	return v;
 }
 
-static inline uint32_t min(const uint32_t a, const uint32_t b) {
+static inline uint32_t min(const uint32_t a, const uint32_t b)
+{
 	return a < b ? a : b;
 }
 
@@ -68,8 +72,9 @@ km_idx_t *km_build_idx(const char *fn, sdict_t *d, const uint32_t length, const 
 		h->qn = sd_put(d, r.qn, tl);
 		h->tn = sd_put(idx->d, r.tn, r.tl);
 		h->tl = d->seq[h->qn].len = tl;
+		// extend mapping
 		h->s = r.ts > min(r.qs, max_overhang) ? (r.ts - min(r.qs, max_overhang)) : 0;
-    h->e = min(r.tl, r.te + min(r.ql - r.qe, max_overhang));
+		h->e = min(r.tl, r.te + min(r.ql - r.qe, max_overhang));
 	}
 	paf_close(fp);
 
@@ -87,17 +92,13 @@ km_idx_t *km_build_idx(const char *fn, sdict_t *d, const uint32_t length, const 
 	for (size_t i = 0; i < v.n; i++) {
 		km_hit2_t h2 = v.a[i];
 		if (d->seq[h2.qn].len != h2.tl) {
-			// TODO: Squeeze dict; affects qns?
-			// d->seq[h2->qn].del = 1;
+			d->seq[h2.qn].del = 1;
 			continue;
 		}
 
 		stored++;
 		km_hit_v *bins = idx->targets[h2.tn].bins;
 		size_t sid = (size_t) floorf(h2.s / (float) length), eid = (size_t) ceilf(h2.e / (float) length);
-		assert(sid < idx->targets[h2.tn].n_bins);
-		assert(eid < idx->targets[h2.tn].n_bins);
-		assert(sid <= eid);
 
 		km_hit_t *h;
 		kv_pushp(km_hit_t, bins[sid], &h);
@@ -109,7 +110,7 @@ km_idx_t *km_build_idx(const char *fn, sdict_t *d, const uint32_t length, const 
 			kv_push(km_hit_t, bins[i], *h);
 		}
 	}
-
+	// TODO: Squeeze dict; affects qns?
 	// sd_squeeze(d);
 	free(v.a);
 	fprintf(stderr, "[M::%s] read %u hits; stored %u hits\n", __func__, tot, stored);

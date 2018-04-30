@@ -2,11 +2,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
 #include "kvec.h"
 #include "sys.h"
 #include "paf.h"
 #include "sdict.h"
 #include "miniasm.h"
+
 #include "color.h"
 
 #define MA_VERSION "0.2-r168-dirty"

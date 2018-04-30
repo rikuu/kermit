@@ -12,7 +12,8 @@
 #define km_color_key(a) ((a).c1)
 KRADIX_SORT_INIT(color, km_color_t, km_color_key, 8)
 
-void km_cf_print(sdict_t *d, km_color_t *c) {
+void km_cf_print(sdict_t *d, km_color_t *c)
+{
 	for (size_t i = 0; i < d->n_seq; ++i) {
 		if (c[i].c1 == 0) continue;
 		else if (c[i].c2 == 0) printf("%s\t%llu\n", d->seq[i].name, c[i].c1);
@@ -47,14 +48,16 @@ km_color_t *km_colors_read(const char *fn, sdict_t *d)
 }
 
 // if two color intervals overlap or are consecutive
-static inline int overlap(const km_color_t a, const km_color_t b) {
+static inline int overlap(const km_color_t a, const km_color_t b)
+{
 	uint32_t start = (a.c1 > b.c1) ? a.c1 : b.c1;
 	uint32_t end = (a.c2 < b.c2) ? a.c2 : b.c2;
 	return (start+1 >= end);
 }
 
 // remove color crossing arcs
-int km_cut_cross(asg_t *g, km_color_t *c) {
+int km_cut_cross(asg_t *g, km_color_t *c)
+{
 	size_t n_cross = 0;
 	for (uint32_t e = 0; e < g->n_arc; ++e) {
 		uint32_t v = g->arc[e].ul>>33, u = g->arc[e].v>>1;
@@ -69,10 +72,14 @@ int km_cut_cross(asg_t *g, km_color_t *c) {
 	return n_cross;
 }
 
-static km_color_t merge_colors(km_color_v colors) {
+static const km_color_t null_color = {0, 0};
+static km_color_t merge_colors(km_color_v colors)
+{
+	if (colors.n == 0) return null_color;
 	// TODO: Some heuristic for chimericity
+	// TODO: This is biased towards lower colors
 	// Possibly merge into "chains" and take best chain
-	// Then chimeric if distant good chains
+	// Then chimeric if two chains are distant
 	radix_sort_color(colors.a, colors.a + colors.n);
 	km_color_t result = colors.a[0];
 	for (size_t i = 1; i < colors.n; i++) {
@@ -85,7 +92,8 @@ static km_color_t merge_colors(km_color_v colors) {
 }
 
 // Move multicoloured nodes to interval coloring, i.e. collapse the colors
-km_color_t *km_intervalize(km_multicolor_t *colors, size_t n_reads) {
+km_color_t *km_intervalize(km_multicolor_t *colors, size_t n_reads)
+{
 	km_color_t *intervals = (km_color_t*) calloc(n_reads, sizeof(km_color_t));
 	for (size_t i = 0; i < n_reads; i++) {
 		if (colors[i].n == 0) continue;
@@ -101,50 +109,50 @@ km_color_t *km_intervalize(km_multicolor_t *colors, size_t n_reads) {
 	return intervals;
 }
 
-static inline int contains(const km_color_v v, const km_color_t x) {
-	for (size_t i = 0; i < v.n; i++) {
-		if (v.a[i].c1 == x.c1 && v.a[i].c2 == x.c2)
+static inline int contains(const km_color_t *a, const size_t n, const km_color_t x)
+{
+	// This is a simple O(n) check, we assume n to be small here
+	for (size_t i = 0; i < n; i++) {
+		if (a[i].c1 == x.c1 && a[i].c2 == x.c2)
 			return 1;
 	}
 	return 0;
 }
 
-typedef struct {
-	uint32_t node;
-	int depth;
-} queue_t;
-
 // Propagate colors through the graph
-void km_propagate(asg_t *g, km_color_t *colors, int max_depth) {
+void km_propagate(asg_t *g, km_color_t *colors, int max_depth)
+{
+	// miniasm has 2 vertices per read, 1 for each strand.
+	// should we make sure to follow stranded-ness?
 	uint32_t n_vtx = g->n_seq;
+	// TODO: this could be optimized further, used as a bitvector
 	int8_t *visited = (int8_t*) calloc(n_vtx, sizeof(int8_t));
 	size_t n_uncolored = 0, n_colored = 0;
 	km_color_v reachable = {0, 0, 0};
-	kvec_t(queue_t) queue = {0, 0, 0};
+	kvec_t(queue_item_t) queue = {0, 0, 0};
 	for (uint32_t v = 0; v < n_vtx; ++v) {
 		if (COLORED(colors[v])) continue;
 		n_uncolored++;
-		queue_t s = {v, 0};
-		kv_push(queue_t, queue, s);
+		queue_item_t s = {v, 0};
+		kv_push(queue_item_t, queue, s);
 		while (queue.n > 0) {
 			s = queue.a[--(queue.n)];
 			visited[s.node] = 1;
 			if (s.depth > max_depth) continue;
 			if (COLORED(colors[s.node])) {
-				if (!contains(reachable, colors[s.node]))
+				if (!contains(reachable.a, reachable.n, colors[s.node]))
 					kv_push(km_color_t, reachable, colors[s.node]);
 			} else {
 				// push all neighbors to stack
 				uint32_t nv = asg_arc_n(g, s.node);
 				asg_arc_t *av = asg_arc_a(g, s.node);
 				for (uint32_t j = 0; j < nv; ++j) {
-					queue_t neighbor = {av[j].v>>1, s.depth+1};
+					queue_item_t neighbor = {av[j].v >> 1, s.depth + 1};
 					if (!av[j].del && !visited[neighbor.node])
-						kv_push(queue_t, queue, neighbor);
+						kv_push(queue_item_t, queue, neighbor);
 				}
 			}
 		}
-		if (reachable.n == 0) continue;
 		km_color_t r = merge_colors(reachable);
 		if (COLORED(r)) {
 			colors[v] = r, ++n_colored;
@@ -157,5 +165,6 @@ void km_propagate(asg_t *g, km_color_t *colors, int max_depth) {
 	free(visited);
 	kv_destroy(reachable);
 	kv_destroy(queue);
-	if (n_uncolored != n_colored) asg_cleanup(g);
+	if (n_uncolored != n_colored)
+		asg_cleanup(g);
 }

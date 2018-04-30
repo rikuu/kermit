@@ -2,8 +2,10 @@
 #include <zlib.h>
 
 #include "kseq.h"
-KSTREAM_INIT(gzFile, gzread, 0x10000)
+
 #include "marker.h"
+
+KSTREAM_INIT(gzFile, gzread, 0x10000)
 
 marker_file_t *marker_open(const char *fn)
 {

@@ -20,7 +20,7 @@ kermit-color:$(OBJS) color.o kermit-color.o
 		$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
 
 clean:
-		rm -fr gmon.out *.o a.out $(PROG) *~ *.a *.dSYM session*
+		rm -fr gmon.out *.o $(PROG) *~ *.a *.dSYM session* miniasm/*.o miniasm/*.a
 
 depend:
 		(LC_ALL=C; export LC_ALL; makedepend -Y -- $(CFLAGS) $(DFLAGS) -- *.c)

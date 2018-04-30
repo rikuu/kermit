@@ -3,10 +3,11 @@
 #include <zlib.h>
 
 #include "kseq.h"
-KSTREAM_INIT(gzFile, gzread, 0x10000)
-
 #include "paf.h"
+
 #include "cf.h"
+
+KSTREAM_INIT(gzFile, gzread, 0x10000)
 
 color_file_t *cf_open(const char *fn)
 {

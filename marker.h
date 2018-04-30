@@ -2,6 +2,7 @@
 #define KM_MARKER
 
 #include <stdint.h>
+
 #include "paf.h"
 
 typedef paf_file_t marker_file_t;

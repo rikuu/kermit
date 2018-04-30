@@ -2,6 +2,7 @@
 #define KM_COLOR
 
 #include <stdint.h>
+
 #include "kvec.h"
 #include "sdict.h"
 #include "asg.h"
@@ -9,6 +10,12 @@
 typedef struct {
 	uint64_t c1, c2;
 } km_color_t;
+
+// Queue structure for propagation
+typedef struct {
+	uint32_t node;
+	int depth;
+} queue_item_t;
 
 typedef kvec_t(km_color_t) km_color_v;
 typedef kvec_t(uint64_t) km_multicolor_t;
