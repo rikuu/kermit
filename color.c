@@ -10,7 +10,7 @@
 #include "color.h"
 
 #define km_color_key(a) ((a).c1)
-KRADIX_SORT_INIT(color, km_color_t, km_color_key, 8)
+KRADIX_SORT_INIT(color, km_color_t, km_color_key, sizeof(uint64_t))
 
 void km_cf_print(sdict_t *d, km_color_t *c)
 {
@@ -50,9 +50,9 @@ km_color_t *km_colors_read(const char *fn, sdict_t *d)
 // if two color intervals overlap or are consecutive
 static inline int overlap(const km_color_t a, const km_color_t b)
 {
-	uint32_t start = (a.c1 > b.c1) ? a.c1 : b.c1;
-	uint32_t end = (a.c2 < b.c2) ? a.c2 : b.c2;
-	return (start+1 >= end);
+	uint64_t start = (a.c1 > b.c1) ? a.c1 : b.c1;
+	uint64_t end = (a.c2 < b.c2) ? a.c2 : b.c2;
+	return (end+1 >= start);
 }
 
 // remove color crossing arcs
