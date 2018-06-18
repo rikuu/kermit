@@ -24,6 +24,7 @@ typedef kvec_t(uint64_t) km_multicolor_t;
 
 void km_cf_print(sdict_t *d, km_color_t *c);
 km_color_t *km_colors_read(const char *fn, sdict_t *d);
+sdict_t *km_exclude(const char *fn, uint64_t color);
 
 int km_cut_cross(asg_t *g, km_color_t *c);
 

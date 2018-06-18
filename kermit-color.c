@@ -6,6 +6,7 @@
 
 #include "sys.h"
 
+#include "kermit.h"
 #include "color.h"
 #include "cf.h"
 #include "index.h"
@@ -71,7 +72,6 @@ km_multicolor_t *km_align_reference(km_idx_t *idx, size_t n_reads)
 	return colors;
 }
 
-// TODO: None of this actually takes time to compute - merge all this to main.c
 int main(int argc, char *argv[])
 {
 	char *paf_fn = 0, **map_fns = 0;
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 		if (c == 'o') max_overhang = atoi(optarg);
 		else if (c == 'l') bin_length = atoi(optarg);
 		else if (c == 'V') {
-			// printf("%s\n", KM_VERSION);
+			printf("%s\n", KM_VERSION);
 			return 0;
 		}
 	}
@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
 
 	sd_destroy(d);
 
-	//fprintf(stderr, "[M::%s] Version: %s\n", __func__, KM_VERSION);
+	fprintf(stderr, "[M::%s] Version: %s\n", __func__, KM_VERSION);
 	fprintf(stderr, "[M::%s] CMD:", __func__);
 	for (int i = 0; i < argc; ++i)
 		fprintf(stderr, " %s", argv[i]);

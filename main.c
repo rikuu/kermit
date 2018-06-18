@@ -9,25 +9,27 @@
 #include "sdict.h"
 #include "miniasm.h"
 
+#include "kermit.h"
 #include "color.h"
 
-#define MA_VERSION "0.2-r168-dirty"
-#define KM_VERSION "0.1"
+void dict_merge(sdict_t *a, sdict_t *b)
+{
+	for (uint32_t i = 0; i < b->n_seq; ++i) {
+		sd_put(a, b->seq[i].name, b->seq[i].len);
+	}
+}
 
 int main(int argc, char *argv[])
 {
 	ma_opt_t opt;
-	int i, c, stage = 100, no_first = 0, no_second = 0, bi_dir = 1, o_set = 0, no_cont = 0, no_cross = 0, no_propagate = 0;
-	sdict_t *d, *excl = 0;
-	ma_sub_t *sub = 0;
-	ma_hit_t *hit;
-	size_t n_hits;
+	int i, c, stage = 100, no_first = 0, no_second = 0, bi_dir = 1, o_set = 0, no_cont = 0, g_set = 0, no_propagate = 0;
 	int max_depth = 10;
 	float cov = 40.0;
 	char *fn_reads = 0, *fn_colors = 0, *outfmt = "ug";
+	uint64_t excl_color = 0;
 
 	ma_opt_init(&opt);
-	while ((c = getopt(argc, argv, "n:m:s:c:S:i:d:g:o:h:I:r:f:e:p:C:12PVBRbF:")) >= 0) {
+	while ((c = getopt(argc, argv, "n:m:s:c:S:i:d:g:o:h:I:r:f:e:p:C:G:12PVBRbF:")) >= 0) {
 		if (c == 'm') opt.min_match = atoi(optarg);
 		else if (c == 'i') opt.min_iden = atof(optarg);
 		else if (c == 's') opt.min_span = atoi(optarg);
@@ -50,6 +52,7 @@ int main(int argc, char *argv[])
 		else if (c == 'R') no_cont = 1;
 		else if (c == 'F') opt.final_ovlp_drop_ratio = atof(optarg);
 		else if (c == 'C') fn_colors = optarg;
+		else if (c == 'G') excl_color = atoi(optarg), g_set = 1;
 		else if (c == 'D') max_depth = atoi(optarg);
 		else if (c == 'V') {
 			printf("%s\n", KM_VERSION);
@@ -67,6 +70,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Options:\n");
 		fprintf(stderr, "  Pre-selection:\n");
 		fprintf(stderr, "    -R          prefilter clearly contained reads (2-pass required)\n");
+		fprintf(stderr, "    -G INT      use only reads with given color\n");
 		fprintf(stderr, "    -m INT      min match length [%d]\n", opt.min_match);
 		fprintf(stderr, "    -i FLOAT    min identity [%.2g]\n", opt.min_iden);
 		fprintf(stderr, "    -s INT      min span [%d]\n", opt.min_span);
@@ -84,7 +88,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "    -r FLOAT[,FLOAT]\n");
 		fprintf(stderr, "                max and min overlap drop ratio [%.2g,%.2g]\n", opt.max_ovlp_drop_ratio, opt.min_ovlp_drop_ratio);
 		fprintf(stderr, "    -F FLOAT    aggressive overlap drop ratio in the end [%.2g]\n", opt.final_ovlp_drop_ratio);
-		fprintf(stderr, "    -C FILE     vertex colors []\n");
+		fprintf(stderr, "    -C FILE     read colors []\n");
 		fprintf(stderr, "    -D INT      max propagation depth [%d]\n", max_depth);
 		fprintf(stderr, "  Miscellaneous:\n");
 		fprintf(stderr, "    -p STR      output information: ug, sg, or cf [%s]\n", outfmt);
@@ -97,28 +101,35 @@ int main(int argc, char *argv[])
 	}
 
 	sys_init();
-	d = sd_init();
 
-	if (no_cont || (fn_colors && no_cross)) {
-		fprintf(stderr, "[M::%s] ===> Step 0: removing reads <===\n", __func__);
-		if (fn_colors && no_cross) {
-			fprintf(stderr, "[M::%s] ===> Step 0.1: removing colored reads <===\n", __func__);
-			// TODO: Exclude colors not specified
-			// km_color_t *colors = km_colors_read(fn_colors, d);
-			// excl = km_hit_prune(sg, colors);
-			// free(colors);
+	sdict_t *excl = 0;
+	if (no_cont || (fn_colors && g_set)) {
+		fprintf(stderr, "[M::%s] ===> Step 0: excluding reads <===\n", __func__);
+		if (fn_colors && g_set) {
+			fprintf(stderr, "[M::%s] ===> Step 0.1: excluding colored reads <===\n", __func__);
+			excl = km_exclude(fn_colors, excl_color);
 		}
 
 		if (no_cont) {
-			fprintf(stderr, "[M::%s] ===> Step 0.2: removing contained reads <===\n", __func__);
-			excl = ma_hit_no_cont(argv[optind], opt.min_span, opt.min_match, opt.max_hang, opt.int_frac);
+			fprintf(stderr, "[M::%s] ===> Step 0.2: excluding contained reads <===\n", __func__);
+			sdict_t *excl2 = ma_hit_no_cont(argv[optind], opt.min_span, opt.min_match, opt.max_hang, opt.int_frac);
+			
+			if (excl) {
+				dict_merge(excl, excl2);
+				sd_destroy(excl2);
+			} else {
+				excl = excl2;
+			}
 		}
 	}
 
 	fprintf(stderr, "[M::%s] ===> Step 1: reading read mappings <===\n", __func__);
-	hit = ma_hit_read(argv[optind], opt.min_span, opt.min_match, d, &n_hits, bi_dir, excl);
+	sdict_t *d = sd_init();
+	size_t n_hits;
+	ma_hit_t *hit = ma_hit_read(argv[optind], opt.min_span, opt.min_match, d, &n_hits, bi_dir, excl);
 	if (excl) sd_destroy(excl);
 
+	ma_sub_t *sub = 0;
 	if (!no_first) {
 		fprintf(stderr, "[M::%s] ===> Step 2: 1-pass (crude) read selection <===\n", __func__);
 		if (stage >= 2) {
@@ -131,8 +142,7 @@ int main(int argc, char *argv[])
 	if (!no_second) {
 		fprintf(stderr, "[M::%s] ===> Step 3: 2-pass (fine) read selection <===\n", __func__);
 		if (stage >= 4) {
-			ma_sub_t *sub2;
-			sub2 = ma_hit_sub(opt.min_dp, opt.min_iden, opt.min_span/2, n_hits, hit, d->n_seq);
+			ma_sub_t *sub2 = ma_hit_sub(opt.min_dp, opt.min_iden, opt.min_span/2, n_hits, hit, d->n_seq);
 			n_hits = ma_hit_cut(sub2, opt.min_span, n_hits, hit);
 			if (sub != 0) {
 				ma_sub_merge(d->n_seq, sub, sub2);
@@ -148,7 +158,7 @@ int main(int argc, char *argv[])
 
 	fprintf(stderr, "[M::%s] ===> Step 4: 1-pass graph cleaning <===\n", __func__);
 	asg_t *sg = ma_sg_gen(&opt, d, sub, n_hits, hit);
-	if (fn_colors && !no_cross) {
+	if (fn_colors) {
 		fprintf(stderr, "[M::%s] ===> Step 4.1: reading graph coloring <===\n", __func__);
 		km_color_t *colors = km_colors_read(fn_colors, d);
 

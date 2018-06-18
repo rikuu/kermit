@@ -21,6 +21,26 @@ void km_cf_print(sdict_t *d, km_color_t *c)
 	}
 }
 
+sdict_t *km_exclude(const char *fn, uint64_t color)
+{
+	color_file_t *fp;
+	fp = cf_open(fn);
+	if (!fp) {
+		fprintf(stderr, "[E::%s] could not open color file %s\n", __func__, fn);
+		exit(1);
+	}
+
+	sdict_t *d = sd_init();
+	color_rec_t r;
+	while (color_read(fp, &r) >= 0) {
+		if (r.c1 <= color && r.c2 >= color)
+			sd_put(d, r.qn, (uint32_t) r.c1);
+	}
+	cf_close(fp);
+	fprintf(stderr, "[M::%s] dropped %d colored reads\n", __func__, d->n_seq);
+	return d;
+}
+
 km_color_t *km_colors_read(const char *fn, sdict_t *d)
 {
 	color_file_t *fp = cf_open(fn);
