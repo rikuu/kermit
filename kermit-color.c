@@ -24,7 +24,7 @@ static void color_stats(const km_multicolor_t *colors, const size_t n_reads)
 	fprintf(stderr, "[M::%s] %zu ones, %zu twos, %zu multis, %zu uncolored\n", __func__, ones, twos, multis, uncolored);
 }
 
-km_multicolor_t *km_align_markers(char **map_fns, size_t n_maps, km_idx_t *idx, size_t n_reads)
+km_multicolor_t *km_align_markers(char **map_fns, size_t n_maps, km_idx_t *idx, size_t n_reads, int unicolor)
 {
 	size_t n_markers = 0;
 	km_multicolor_t *colors = (km_multicolor_t*) calloc(n_reads, sizeof(km_multicolor_t));
@@ -38,7 +38,7 @@ km_multicolor_t *km_align_markers(char **map_fns, size_t n_maps, km_idx_t *idx, 
 		marker_rec_t r;
 		while (marker_read(fp, &r) >= 0) {
 			n_markers++;
-			const uint64_t color = i << 16 | (r.bin + 1);
+			const uint64_t color = unicolor ? (i << 16) : (i << 16 | (r.bin + 1));
 			km_hit_v h = km_pileup(idx, r.n, r.p);
 			for (size_t j = 0; j < h.n; j++) {
 				int32_t id = h.a[j].qn;
@@ -54,13 +54,13 @@ km_multicolor_t *km_align_markers(char **map_fns, size_t n_maps, km_idx_t *idx, 
 	return colors;
 }
 
-km_multicolor_t *km_align_reference(km_idx_t *idx, size_t n_reads)
+km_multicolor_t *km_align_reference(km_idx_t *idx, size_t n_reads, int unicolor)
 {
 	km_multicolor_t *colors = (km_multicolor_t*) calloc(n_reads, sizeof(km_multicolor_t));
 	for (size_t i = 0; i < idx->d->n_seq; i++) {
 		km_target_t *target = &idx->targets[i];
 		for (size_t j = 0; j < target->n_bins; j++) {
-			const uint64_t color = i << 16 | (j + 1);
+			const uint64_t color = unicolor ? (i << 16) : (i << 16 | (j + 1));
 			for (size_t k = 0; k < target->bins[j].n; k++) {
 				int32_t id = target->bins[j].a[k].qn;
 				if (id == -1 || id >= (int32_t) n_reads || (colors[id].n > 0 && colors[id].a[colors[id].n - 1] == color)) continue;
@@ -77,11 +77,12 @@ int main(int argc, char *argv[])
 	char *paf_fn = 0, **map_fns = 0;
 	uint16_t n_maps = 0;
 	uint32_t max_overhang = 250, bin_length = 10000;
-	int reference_only = 1, c;
+	int reference_only = 1, unicolor = 0, c;
 
-	while ((c = getopt(argc, argv, "o:l:V")) >= 0) {
+	while ((c = getopt(argc, argv, "o:l:Vu")) >= 0) {
 		if (c == 'o') max_overhang = atoi(optarg);
 		else if (c == 'l') bin_length = atoi(optarg);
+		else if (c == 'u') unicolor = 1;
 		else if (c == 'V') {
 			printf("%s\n", KM_VERSION);
 			return 0;
@@ -100,7 +101,10 @@ int main(int argc, char *argv[])
 	} else {
 		fprintf(stderr, "Usage: kermit-color [options] <in.paf> <markers> [<markers2>,..]\n");
 		fprintf(stderr, "Options:\n");
-		fprintf(stderr, " -V          print version number\n");
+		fprintf(stderr, " -V          print version number and exit\n");
+		fprintf(stderr, " -o [INT]    max extension of mapping\n");
+		fprintf(stderr, " -l [INT]    index bin length\n");
+		fprintf(stderr, " -u          assign single color per contig\n");
 		return 1;
 	}
 
@@ -113,11 +117,11 @@ int main(int argc, char *argv[])
 	km_multicolor_t *multicolors = 0;
 	if (!reference_only) {
 		fprintf(stderr, "[M::%s] ===> Step 2: mapping markers to reads <===\n", __func__);
-		multicolors = km_align_markers(map_fns, n_maps, idx, d->n_seq);
+		multicolors = km_align_markers(map_fns, n_maps, idx, d->n_seq, unicolor);
 		free(map_fns);
 	} else {
 		fprintf(stderr, "[M::%s] ===> Step 2: reversing index <===\n", __func__);
-		multicolors = km_align_reference(idx, d->n_seq);
+		multicolors = km_align_reference(idx, d->n_seq, unicolor);
 	}
 
 	km_idx_destroy(idx);
