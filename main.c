@@ -23,13 +23,13 @@ int main(int argc, char *argv[])
 {
 	ma_opt_t opt;
 	int i, c, stage = 100, no_first = 0, no_second = 0, bi_dir = 1, o_set = 0, no_cont = 0, g_set = 0, no_propagate = 0;
-	int max_depth = 10;
+	int max_depth = 5, max_distance=1;
 	float cov = 40.0;
 	char *fn_reads = 0, *fn_colors = 0, *outfmt = "ug";
 	uint64_t excl_color = 0;
 
 	ma_opt_init(&opt);
-	while ((c = getopt(argc, argv, "n:m:s:c:S:i:d:g:o:h:I:r:f:e:p:C:G:12PVBRbF:")) >= 0) {
+	while ((c = getopt(argc, argv, "n:m:s:c:S:i:d:g:o:h:I:r:f:e:p:C:G:b:12PVRF:")) >= 0) {
 		if (c == 'm') opt.min_match = atoi(optarg);
 		else if (c == 'i') opt.min_iden = atof(optarg);
 		else if (c == 's') opt.min_span = atoi(optarg);
@@ -47,13 +47,12 @@ int main(int argc, char *argv[])
 		else if (c == '2') no_second = 1;
 		else if (c == 'P') no_propagate = 1;
 		else if (c == 'n') opt.n_rounds = atoi(optarg) - 1;
-		else if (c == 'B') bi_dir = 1;
-		else if (c == 'b') bi_dir = 0;
 		else if (c == 'R') no_cont = 1;
 		else if (c == 'F') opt.final_ovlp_drop_ratio = atof(optarg);
 		else if (c == 'C') fn_colors = optarg;
 		else if (c == 'G') excl_color = atoi(optarg), g_set = 1;
 		else if (c == 'D') max_depth = atoi(optarg);
+		else if (c == 'b') max_distance = atoi(optarg);
 		else if (c == 'V') {
 			printf("%s\n", KM_VERSION);
 			return 0;
@@ -88,8 +87,10 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "    -r FLOAT[,FLOAT]\n");
 		fprintf(stderr, "                max and min overlap drop ratio [%.2g,%.2g]\n", opt.max_ovlp_drop_ratio, opt.min_ovlp_drop_ratio);
 		fprintf(stderr, "    -F FLOAT    aggressive overlap drop ratio in the end [%.2g]\n", opt.final_ovlp_drop_ratio);
+		fprintf(stderr, "  Coloring:\n");
 		fprintf(stderr, "    -C FILE     read colors []\n");
 		fprintf(stderr, "    -D INT      max propagation depth [%d]\n", max_depth);
+		fprintf(stderr, "    -b INT      max distance between colors [%d]\n", max_distance);
 		fprintf(stderr, "  Miscellaneous:\n");
 		fprintf(stderr, "    -p STR      output information: ug, sg, or cf [%s]\n", outfmt);
 		fprintf(stderr, "    -b          both directions of an arc are present in input\n");
@@ -171,7 +172,7 @@ int main(int argc, char *argv[])
 			km_cf_print(d, colors);
 		} else {
 			fprintf(stderr, "[M::%s] ===> Step 4.3: removing color crossing arcs <===\n", __func__);
-			km_cut_cross(sg, colors);
+			km_cut_cross(sg, colors, max_distance);
 		}
 
 		free(colors);

@@ -26,7 +26,7 @@ void km_cf_print(sdict_t *d, km_color_t *c);
 km_color_t *km_colors_read(const char *fn, sdict_t *d);
 sdict_t *km_exclude(const char *fn, uint64_t color);
 
-int km_cut_cross(asg_t *g, km_color_t *c);
+int km_cut_cross(asg_t *g, km_color_t *c, int max_distance);
 
 km_color_t *km_intervalize(km_multicolor_t *colors, size_t n_reads);
 void km_propagate(asg_t *g, km_color_t *colors, int max_depth);
