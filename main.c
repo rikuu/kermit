@@ -24,15 +24,14 @@ static void km_ug_color_print(const ma_ug_t *ug, const km_color_t *colors, FILE 
 	for (uint32_t i = 0; i < ug->u.n; ++i) {
 		const ma_utg_t *p = &ug->u.a[i];
 		
-		uint64_t min, max;
-		min = colors[p->a[0]].c1;
-		min = colors[p->a[0]].c2;
+		uint64_t min = colors[p->a[0]>>33].c1, max = colors[p->a[0]>>33].c2;
 		for (uint32_t j = 1; j < p->n; j++) {
-			min = min < colors[p->a[j]].c1 ? min : colors[p->a[j]].c1;
-			max = max > colors[p->a[j]].c2 ? max : colors[p->a[j]].c2;
+			uint32_t x = p->a[j]>>33;
+			min = min < colors[x].c1 ? min : colors[x].c1;
+			max = max > colors[x].c2 ? max : colors[x].c2;
 		}
 
-		fprintf(fp, "#\tutg%.6d%c\t%llu\t%llu", i+1, "lc"[p->circ], min, max);
+		fprintf(fp, "#\tutg%.6d%c\t%llu\t%llu\n", i+1, "lc"[p->circ], min, max);
 	}
 }
 
