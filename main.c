@@ -12,10 +12,27 @@
 #include "kermit.h"
 #include "color.h"
 
-void dict_merge(sdict_t *a, sdict_t *b)
+static void dict_merge(sdict_t *a, sdict_t *b)
 {
 	for (uint32_t i = 0; i < b->n_seq; ++i) {
 		sd_put(a, b->seq[i].name, b->seq[i].len);
+	}
+}
+
+static void km_ug_color_print(const ma_ug_t *ug, const km_color_t *colors, FILE *fp)
+{
+	for (uint32_t i = 0; i < ug->u.n; ++i) {
+		const ma_utg_t *p = &ug->u.a[i];
+		
+		uint64_t min, max;
+		min = colors[p->a[0]].c1;
+		min = colors[p->a[0]].c2;
+		for (uint32_t j = 1; j < p->n; j++) {
+			min = min < colors[p->a[j]].c1 ? min : colors[p->a[j]].c1;
+			max = max > colors[p->a[j]].c2 ? max : colors[p->a[j]].c2;
+		}
+
+		fprintf(fp, "#\tutg%.6d%c\t%llu\t%llu", i+1, "lc"[p->circ], min, max);
 	}
 }
 
@@ -159,9 +176,10 @@ int main(int argc, char *argv[])
 
 	fprintf(stderr, "[M::%s] ===> Step 4: 1-pass graph cleaning <===\n", __func__);
 	asg_t *sg = ma_sg_gen(&opt, d, sub, n_hits, hit);
+	km_color_t *colors = 0;
 	if (fn_colors) {
 		fprintf(stderr, "[M::%s] ===> Step 4.1: reading graph coloring <===\n", __func__);
-		km_color_t *colors = km_colors_read(fn_colors, d);
+		colors = km_colors_read(fn_colors, d);
 
 		if (!no_propagate) {
 			fprintf(stderr, "[M::%s] ===> Step 4.2: propagating colors <===\n", __func__);
@@ -174,8 +192,6 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "[M::%s] ===> Step 4.3: removing color crossing arcs <===\n", __func__);
 			km_cut_cross(sg, colors, max_distance);
 		}
-
-		free(colors);
 	}
 
 	if (stage >= 6) {
@@ -218,14 +234,16 @@ int main(int argc, char *argv[])
 		ma_ug_t *ug = ma_ug_gen(sg);
 		if (fn_reads) ma_ug_seq(ug, d, sub, fn_reads);
 		ma_ug_print(ug, d, sub, stdout);
+		if (colors) km_ug_color_print(ug, colors, stdout);
 		ma_ug_destroy(ug);
 	} else if (strcmp(outfmt, "sg") == 0)
 		ma_sg_print(sg, d, sub, stdout);
-
+	
 	asg_destroy(sg);
 	free(sub);
 	free(hit);
 	sd_destroy(d);
+	if (colors) free(colors);
 
 	fprintf(stderr, "[M::%s] Version: %s (miniasm %s)\n", __func__, KM_VERSION, MA_VERSION);
 	fprintf(stderr, "[M::%s] CMD:", __func__);
