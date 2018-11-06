@@ -2,7 +2,8 @@ CC=			gcc
 CFLAGS=		-g -Wall -O2 -Wc++-compat -Wextra -pedantic
 CPPFLAGS=
 INCLUDES=	-I. -Iminiasm
-OBJS=		miniasm/sys.o miniasm/sdict.o miniasm/paf.o miniasm/asg.o miniasm/common.o miniasm/hit.o miniasm/asm.o cf.o color.o index.o marker.o
+MA_OBJS=	miniasm/sys.o miniasm/sdict.o miniasm/paf.o miniasm/asg.o miniasm/common.o miniasm/hit.o miniasm/asm.o
+OBJS=		$(MA_OBJS) cf.o color.o index.o marker.o scaffold.o
 PROG=		kermit kermit-color
 LIBS=		-lm -lz -lpthread
 
@@ -11,12 +12,12 @@ LIBS=		-lm -lz -lpthread
 .c.o:
 		$(CC) -c $(CFLAGS) $(CPPFLAGS) $(INCLUDES) $< -o $@
 
-all:$(PROG)
+all: $(PROG)
 
-kermit:$(OBJS) main.o
+kermit: $(OBJS) main.o
 		$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
 
-kermit-color:$(OBJS) color.o kermit-color.o
+kermit-color: $(OBJS) kermit-color.o
 		$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
 
 clean:
@@ -27,6 +28,6 @@ depend:
 
 # DO NOT DELETE
 
-main.o: miniasm/kvec.h miniasm/sys.h miniasm/paf.h miniasm/sdict.h miniasm/miniasm.h miniasm/asg.h color.h
+main.o: miniasm/kvec.h miniasm/sys.h miniasm/paf.h miniasm/sdict.h miniasm/miniasm.h miniasm/asg.h color.h scaffold.h
 cf.o: miniasm/paf.h miniasm/kseq.h color.h
 color.o: color.h miniasm/asg.h

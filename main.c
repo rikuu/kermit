@@ -11,6 +11,7 @@
 
 #include "kermit.h"
 #include "color.h"
+#include "scaffold.h"
 
 static void dict_merge(sdict_t *a, sdict_t *b)
 {
@@ -19,33 +20,18 @@ static void dict_merge(sdict_t *a, sdict_t *b)
 	}
 }
 
-static void km_ug_color_print(const ma_ug_t *ug, const km_color_t *colors, FILE *fp)
-{
-	for (uint32_t i = 0; i < ug->u.n; ++i) {
-		const ma_utg_t *p = &ug->u.a[i];
-		
-		uint64_t min = colors[p->a[0]>>33].c1, max = colors[p->a[0]>>33].c2;
-		for (uint32_t j = 1; j < p->n; j++) {
-			uint32_t x = p->a[j]>>33;
-			min = min < colors[x].c1 ? min : colors[x].c1;
-			max = max > colors[x].c2 ? max : colors[x].c2;
-		}
-
-		fprintf(fp, "#\tutg%.6d%c\t%llu\t%llu\n", i+1, "lc"[p->circ], min, max);
-	}
-}
-
 int main(int argc, char *argv[])
 {
 	ma_opt_t opt;
 	int i, c, stage = 100, no_first = 0, no_second = 0, bi_dir = 1, o_set = 0, no_cont = 0, g_set = 0, no_propagate = 0;
-	int max_depth = 5, max_distance=1;
+	int max_depth = 5, max_distance = 1;
+	uint64_t scaffold_distance = 1 << 16;
 	float cov = 40.0;
 	char *fn_reads = 0, *fn_colors = 0, *outfmt = "ug";
 	uint64_t excl_color = 0;
 
 	ma_opt_init(&opt);
-	while ((c = getopt(argc, argv, "n:m:s:c:S:i:d:g:o:h:I:r:f:e:p:C:G:b:12PVRF:")) >= 0) {
+	while ((c = getopt(argc, argv, "n:m:s:c:S:i:d:g:o:h:I:r:f:e:p:C:G:b:X:12PVRF:")) >= 0) {
 		if (c == 'm') opt.min_match = atoi(optarg);
 		else if (c == 'i') opt.min_iden = atof(optarg);
 		else if (c == 's') opt.min_span = atoi(optarg);
@@ -69,6 +55,7 @@ int main(int argc, char *argv[])
 		else if (c == 'G') excl_color = atoi(optarg), g_set = 1;
 		else if (c == 'D') max_depth = atoi(optarg);
 		else if (c == 'b') max_distance = atoi(optarg);
+		else if (c == 'X') scaffold_distance = atoi(optarg);
 		else if (c == 'V') {
 			printf("%s\n", KM_VERSION);
 			return 0;
@@ -85,7 +72,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Options:\n");
 		fprintf(stderr, "  Pre-selection:\n");
 		fprintf(stderr, "    -R          prefilter clearly contained reads (2-pass required)\n");
-		fprintf(stderr, "    -G INT      use only reads with given color\n");
 		fprintf(stderr, "    -m INT      min match length [%d]\n", opt.min_match);
 		fprintf(stderr, "    -i FLOAT    min identity [%.2g]\n", opt.min_iden);
 		fprintf(stderr, "    -s INT      min span [%d]\n", opt.min_span);
@@ -107,6 +93,8 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "    -C FILE     read colors []\n");
 		fprintf(stderr, "    -D INT      max propagation depth [%d]\n", max_depth);
 		fprintf(stderr, "    -b INT      max distance between colors [%d]\n", max_distance);
+		fprintf(stderr, "    -G INT      use only reads with given color\n");
+		fprintf(stderr, "    -X INT      max scaffold color distance [%d]\n", scaffold_distance);
 		fprintf(stderr, "  Miscellaneous:\n");
 		fprintf(stderr, "    -p STR      output information: ug, sg, or cf [%s]\n", outfmt);
 		fprintf(stderr, "    -b          both directions of an arc are present in input\n");
@@ -231,13 +219,24 @@ int main(int argc, char *argv[])
 	if (strcmp(outfmt, "ug") == 0) {
 		fprintf(stderr, "[M::%s] ===> Step 6: generating unitigs <===\n", __func__);
 		ma_ug_t *ug = ma_ug_gen(sg);
+		km_ugc_t *ugc = km_ug_color(ug, colors);
+
+		if (scaffold_distance > 0) {
+			scaffold_t scaf = km_scaffold(ugc, scaffold_distance);
+			km_scaffold_fill(ugc, sg, scaf, d);
+		}
+
 		if (fn_reads) ma_ug_seq(ug, d, sub, fn_reads);
 		ma_ug_print(ug, d, sub, stdout);
-		if (colors) km_ug_color_print(ug, colors, stdout);
+		
+		km_print_ugc(ugc, stdout);
+		//km_ugc_destroy(ugc);
+		free(ugc->utgc);
+		
 		ma_ug_destroy(ug);
 	} else if (strcmp(outfmt, "sg") == 0)
 		ma_sg_print(sg, d, sub, stdout);
-	
+
 	asg_destroy(sg);
 	free(sub);
 	free(hit);

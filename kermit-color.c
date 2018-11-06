@@ -42,7 +42,8 @@ km_multicolor_t *km_align_markers(char **map_fns, size_t n_maps, km_idx_t *idx, 
 			km_hit_v h = km_pileup(idx, r.n, r.p);
 			for (size_t j = 0; j < h.n; j++) {
 				int32_t id = h.a[j].qn;
-				if (id == -1 || id >= (int32_t) n_reads || (colors[id].n > 0 && colors[id].a[colors[id].n - 1] == color)) continue;
+				if (id == -1 || id >= (int32_t) n_reads ||
+					(colors[id].n > 0 && colors[id].a[colors[id].n - 1] == color)) continue;
 				kv_push(uint64_t, colors[id], color);
 			}
 			free(h.a);

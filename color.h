@@ -11,16 +11,11 @@ typedef struct {
 	uint64_t c1, c2;
 } km_color_t;
 
-// Queue structure for propagation
-typedef struct {
-	uint32_t node;
-	int depth;
-} queue_item_t;
-
 typedef kvec_t(km_color_t) km_color_v;
 typedef kvec_t(uint64_t) km_multicolor_t;
 
 #define COLORED(n) (n.c1 != 0 || n.c2 != 0)
+int color_overlap(const km_color_t a, const km_color_t b, const int max_distance);
 
 void km_cf_print(sdict_t *d, km_color_t *c);
 km_color_t *km_colors_read(const char *fn, sdict_t *d);

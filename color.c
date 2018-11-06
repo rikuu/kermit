@@ -68,7 +68,7 @@ km_color_t *km_colors_read(const char *fn, sdict_t *d)
 }
 
 // if two color intervals overlap or are consecutive
-static inline int overlap(const km_color_t a, const km_color_t b, const int max_distance)
+int color_overlap(const km_color_t a, const km_color_t b, const int max_distance)
 {
 	uint64_t start = (a.c1 > b.c1) ? a.c1 : b.c1;
 	uint64_t end = (a.c2 < b.c2) ? a.c2 : b.c2;
@@ -83,7 +83,7 @@ int km_cut_cross(asg_t *g, km_color_t *c, int max_distance)
 		uint32_t v = g->arc[e].ul>>33, u = g->arc[e].v>>1;
 		// if run with no propagation, we allow arcs to/from uncolored reads
 		if (!COLORED(c[v]) || !COLORED(c[u])) continue;
-		if (overlap(c[v], c[u], max_distance)) continue;
+		if (color_overlap(c[v], c[u], max_distance)) continue;
 		g->arc[e].del = 1, ++n_cross;
 	}
 	fprintf(stderr, "[M::%s] removed %ld color crossing arcs\n", __func__, n_cross);
@@ -103,7 +103,7 @@ static km_color_t merge_colors(km_color_v colors)
 	radix_sort_color(colors.a, colors.a + colors.n);
 	km_color_t result = colors.a[0];
 	for (size_t i = 1; i < colors.n; i++) {
-		if (overlap(result, colors.a[i], 1)) {
+		if (color_overlap(result, colors.a[i], 1)) {
 			result.c1 = (colors.a[i].c1 < result.c1) ? colors.a[i].c1 : result.c1;
 			result.c2 = (colors.a[i].c2 > result.c2) ? colors.a[i].c2 : result.c2;
 		}
@@ -139,13 +139,15 @@ static inline int contains(const km_color_t *a, const size_t n, const km_color_t
 	return 0;
 }
 
+typedef struct {
+	uint32_t node;
+	int depth;
+} queue_item_t;
+
 // Propagate colors through the graph
 void km_propagate(asg_t *g, km_color_t *colors, int max_depth)
 {
-	// miniasm has 2 vertices per read, 1 for each strand.
-	// should we make sure to follow stranded-ness?
 	uint32_t n_vtx = g->n_seq;
-	// TODO: this could be optimized further, used as a bitvector
 	int8_t *visited = (int8_t*) calloc(n_vtx, sizeof(int8_t));
 	size_t n_uncolored = 0, n_colored = 0;
 	km_color_v reachable = {0, 0, 0};
