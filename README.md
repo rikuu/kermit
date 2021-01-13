@@ -52,6 +52,9 @@ A linkage map is given as tab-separated files with each line defining a marker
 by its position on a contig and a bin. [lepmap3] gives applicable linkage maps
 and is recommended.
 
+Both a simulated map for E. coli K-12 and a script for simulating linkage maps is
+included in misc folder.
+
 [miniasm]: https://github.com/lh3/miniasm
 [minimap2]: https://github.com/lh3/minimap2
 [lepmap3]: https://sourceforge.net/projects/lep-map3/
